@@ -10,7 +10,7 @@ fn main() {
         println!("Must provide an input and output file (in that order)");
         return;
     }
-    let mut game = board::GameState::from_fen(&args[1]);
+    let game = board::GameState::from_fen(&args[1]);
 
     //Find all valid moves
     let valid_moves = game.valid_moves();
