@@ -1,4 +1,6 @@
-#[derive(Clone, Copy, Debug)]
+use std::io::Empty;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Pieces {
   Knight(bool),
   Rook(bool),
@@ -29,6 +31,22 @@ impl Pieces {
   }
 }
 
+#[derive(Clone, Copy, Debug)]
+enum Castles {
+  WhiteKing,
+  WhiteQueen,
+  BlackKing,
+  BlackQueen,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Move {
+  start: [usize; 2],
+  end: [usize; 2],
+  castle: Option<Castles>,
+  promote: Option<Pieces>,
+}
+
 #[derive(Clone, Debug)]
 pub struct GameState {
   board: [[Pieces; 8]; 8],
@@ -41,6 +59,8 @@ pub struct GameState {
   half_moves: usize,
   full_moves: usize,
   check: Option<bool>,
+  white_king: [usize; 2],
+  black_king: [usize; 2],
 }
 
 impl GameState {
@@ -79,7 +99,7 @@ impl GameState {
       //Read En Passant targets
       let temp = fields.next().unwrap();
       let passant: Option<[usize; 2]> = if !temp.eq("-") {
-        Some([temp.chars().nth(1).unwrap().to_digit(10).unwrap() as usize, to_num(temp.chars().next().unwrap())])
+        Some([to_num(temp.chars().nth(1).unwrap()), to_num(temp.chars().next().unwrap())])
       }
       else {
         None
@@ -89,10 +109,25 @@ impl GameState {
       let half_moves = fields.next().unwrap().parse::<usize>().unwrap();
       let full_moves = fields.next().unwrap().parse::<usize>().unwrap();
 
-      //Calculate if a king is in check
-      let check = is_in_check(board_state);
+      //Find king positions
+      let mut black_king = [0, 0];
+      let mut white_king = [0, 0];
+      for i in 0..8 {
+        for j in 0..8 {
+          match board_state[i][j] {
+            Pieces::King(true) => black_king = [i, j],
+            Pieces::King(false) => white_king = [i, j],
+            _ => continue,
+          }
+        }
+      }
 
-      GameState {board: board_state, curr_move: player, castling_rights: rights, en_passant: passant, half_moves, full_moves, check}
+      let mut game = GameState {board: board_state, curr_move: player, castling_rights: rights, en_passant: passant, half_moves, full_moves, check: None, white_king, black_king};
+
+      //Calculate if a king is in check
+      game.check = is_in_check(game);
+
+      game
     }
 
     pub fn valid_moves (&self) -> Vec<String> {
@@ -113,6 +148,21 @@ impl GameState {
         }
       }
       moves
+    }
+
+    pub fn make_move (&mut self, mov: Move) {
+      //Expects mov to be a valid move
+      let piece = self.board[mov.start[0]][mov.start[1]];
+      self.board[mov.end[0]][mov.end[1]] = piece;
+      self.board[mov.start[0]][mov.start[1]] = Pieces::Empty;
+      if let Some(castle_type) = mov.castle {
+        match castle_type {
+          Castles::WhiteKing => self.make_move(Move {start: [0, 7], end: [0, 5], castle: None, promote: None}),
+          Castles::WhiteQueen => self.make_move(Move {start: [0, 0], end: [0, 3], castle: None, promote: None}),
+          Castles::BlackKing => self.make_move(Move {start: [7, 7], end: [7, 5], castle: None, promote: None}),
+          Castles::BlackQueen => self.make_move(Move {start: [7, 0], end: [7, 3], castle: None, promote: None}),
+        }
+      }
     }
 }
 
@@ -179,16 +229,38 @@ fn black_pawn_moves (state: &GameState, start: [usize; 2]) -> Vec<String> {
   moves
 }
 
-fn is_in_bounds (mov: [i32; 2]) -> bool {
-  if mov[0] > 7 || mov[0] < 0 || mov[1] > 7 || mov[1] < 0 {
+fn is_in_bounds (pos: [i32; 2]) -> bool {
+  if pos[0] > 7 || pos[0] < 0 || pos[1] > 7 || pos[1] < 0 {
     return false;
   }
   true
 }
 
-fn is_in_check (board: [[Pieces; 8]; 8]) -> Option<bool> {
+fn is_in_check (game: GameState) -> Option<bool> {
   let result = None;
 
+  //White King
+  //Ray attacks
+  'dir: for direction in [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]] {
+    let mut row = game.white_king[0] as i32 + direction[0];
+    let mut col = game.white_king[1] as i32 + direction[1];
+    if !is_in_bounds([row, col]) {
+        continue 'dir;
+    } 
+    while game.board[row as usize][col as usize] == Pieces::Empty {
+      row += direction[0];
+      col += direction[1];
+      if !is_in_bounds([row, col]) {
+        continue 'dir;
+      } 
+    }
+    match game.board[row as usize][col as usize] {
+      Pieces::Bishop(true) | Pieces::Rook(true) | Pieces::Queen(true) | Pieces::Pawn(true) => return Some(false),
+      _ => {},
+    }
+  }
+  //Knight attacks
+  
 
   result
 }
