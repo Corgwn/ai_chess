@@ -1,6 +1,6 @@
 use std::env;
 use std::fs::File;
-use std::io::Write;
+use std::io::{Write, BufReader, BufRead};
 
 mod board;
 
@@ -10,11 +10,17 @@ fn main() {
         println!("Must provide an input and output file (in that order)");
         return;
     }
-    let game = board::GameState::from_fen(&args[1]);
+    let file = BufReader::new(File::open(&args[1]).unwrap());
+    let fen_string = file.lines().next().unwrap().unwrap();
+    let game = board::GameState::from_fen(&fen_string);
 
     //Find all valid moves
     let valid_moves = game.valid_moves();
 
     let mut f = File::create(args[2].clone()).unwrap();
-    writeln!(f, "{:?}", valid_moves).unwrap();
+    writeln!(f, "{:?}", game).unwrap();
+    writeln!(f, "{} moves:", valid_moves.len()).unwrap();
+    for mov in valid_moves {
+        writeln!(f, "{}", mov).unwrap();
+    }
 }
