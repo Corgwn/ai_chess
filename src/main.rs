@@ -22,7 +22,7 @@ fn main() {
     println!("{}", elapsed.as_nanos());
 
     let mut f = File::create(args[2].clone()).unwrap();
-    writeln!(f, "{:?}", game).unwrap();
+    //writeln!(f, "{:?}", game).unwrap();
     writeln!(f, "{} moves:", valid_moves.len()).unwrap();
     for mov in valid_moves {
         writeln!(f, "{}", mov).unwrap();

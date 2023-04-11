@@ -155,8 +155,7 @@ impl GameState {
             Pieces::Bishop(player) => moves.append(&mut bishop_moves(self, [i, j], player)),
             Pieces::Queen(player) => moves.append(&mut queen_moves(self, [i, j], player)),
             Pieces::King(player) => moves.append(&mut king_moves(self, [i, j], player)),
-            Pieces::Pawn(true) => moves.append(&mut black_pawn_moves(self, [i, j])),
-            Pieces::Pawn(false) => moves.append(&mut white_pawn_moves(self, [i, j])),
+            Pieces::Pawn(player) => moves.append(&mut pawn_moves(self, [i, j], player)),
           }
         }
       }
@@ -401,55 +400,8 @@ fn queen_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> 
   if player != game.curr_move {
     return moves;
   }
-  //Generate moves for every direction a queen can move
-  'dir: for direction in [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]] {
-    let mut row = start[0] as i32 + direction[0];
-    let mut col = start[1] as i32 + direction[1];
-    if !is_in_bounds([row, col]) {
-        continue 'dir;
-    }
-    //See if moving in this position causes the current player to be put in check
-    let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
-    if !player && is_white_checked(game.make_move(mov)){
-      continue 'dir;
-    }
-    if player && is_black_checked(game.make_move(mov)){
-      continue 'dir;
-    }
-    //Add moves until the direction hits a piece or goes off the board
-    while game.board[row as usize][col as usize] == Pieces::Empty {
-      moves.push(Move {start, end: [row as usize, col as usize], ..Default::default()});
-      row += direction[0];
-      col += direction[1];
-      if !is_in_bounds([row, col]) {
-        continue 'dir;
-      } 
-    }
-    //Find which piece we hit and add moves accordingly
-    match game.board[row as usize][col as usize] {
-      //Black piece
-      Pieces::Rook(true) | Pieces::Queen(true) | Pieces::Bishop(true) | Pieces::King(true) | Pieces::Knight(true) | Pieces::Pawn(true) => {
-        //White's turn
-        if !player {
-          let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
-          if !is_white_checked(game.make_move(mov)){
-            moves.push(mov);
-          }
-        }
-      },
-      //White piece
-      Pieces::Rook(false) | Pieces::Queen(false) | Pieces::Bishop(false) | Pieces::King(false) | Pieces::Knight(false) | Pieces::Pawn(false) => {
-        //Black's turn
-        if player {
-          let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
-          if !is_black_checked(game.make_move(mov)){
-            moves.push(mov);
-          }
-        }
-      },
-      _ => {},
-    }
-  }
+  moves.append(&mut rook_moves(game, start, player));
+  moves.append(&mut bishop_moves(game, start, player));
   moves
 }
 
@@ -546,17 +498,20 @@ fn king_moves (game: & GameState, start: [usize; 2], player: bool) -> Vec<Move> 
   moves
 }
 
-fn white_pawn_moves (game: &GameState, start: [usize; 2]) -> Vec<Move> {
+fn pawn_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> {
   let mut moves = Vec::new();
-  if game.curr_move {
+  let forward = if player { -1 } else { 1 };
+  let no_capture = if player { [7, 7] } else { [0, 0] };
+  let check_function = if player { is_black_checked } else { is_white_checked };
+  if player != game.curr_move {
     return moves;
   }
   //Pawn moves forward one - available if square ahead is empty and in bounds
-  let row = start[0] as i32 + 1;
+  let row = start[0] as i32 + forward;
   let col = start[1] as i32;
   if is_in_bounds([row, col]) && game.board[row as usize][col as usize] == Pieces::Empty {
     let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
-    if !is_white_checked(game.make_move(mov)){
+    if !check_function(game.make_move(mov)){
       if row == 7 {
         moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Queen(false)), ..Default::default()});
         moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Rook(false)), ..Default::default()});
@@ -570,32 +525,32 @@ fn white_pawn_moves (game: &GameState, start: [usize; 2]) -> Vec<Move> {
   }
   //Pawn moves forward two - available only if the pawn is on it's starting square, then the two squares in front must be empty. Cannot promote with this move
   if start[0] == 1 {
-    let row = start[0] as i32 + 2;
+    let row = start[0] as i32 + forward * 2;
     let col = start[1] as i32;
     if game.board[(row - 1) as usize][col as usize] == Pieces::Empty && game.board[row as usize][col as usize] == Pieces::Empty {
-      let passant: Option<PassantTypes> = Some(PassantTypes::PassantAvailable([(row - 1) as usize, col as usize]));
+      let passant: Option<PassantTypes> = Some(PassantTypes::PassantAvailable([(row + (-1 * forward)) as usize, col as usize]));
       let mov = Move {start, end: [row as usize, col as usize], passant, ..Default::default()};
-      if !is_white_checked(game.make_move(mov)) {
+      if !check_function(game.make_move(mov)) {
         moves.push(mov);
       } 
     }
   }
   //Pawn captures to the left - available only if there is a piece on that square
-  let row = start[0] as i32 + 1;
+  let row = start[0] as i32 + forward;
   let col = start[1] as i32 - 1;
-  //If a passant capture is available, get the space coordinates - otherwise [0, 0] can never be a capture for white pawns
-  let passant_pos = if let Some(passant_pos) = game.en_passant { passant_pos } else { [0, 0] };
+  //If a passant capture is available, get the space coordinates - otherwise the square that can't be captured by current player's pawns
+  let passant_pos = if let Some(passant_pos) = game.en_passant { passant_pos } else { no_capture };
   let passant_cap = [row as usize, col as usize] == passant_pos;
   if is_in_bounds([row, col]) && (game.board[row as usize][col as usize] != Pieces::Empty || passant_cap) {
     let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
-    if passant_cap && !is_white_checked(game.make_move(mov)) {
+    if passant_cap && !check_function(game.make_move(mov)) {
       //Passant captures cannot promote
-      moves.push(Move { start, end: passant_pos, passant: Some(PassantTypes::PassantCapture([(row - 1) as usize, col as usize])), ..Default::default()});
+      moves.push(Move { start, end: passant_pos, passant: Some(PassantTypes::PassantCapture([(row + (-1 * forward)) as usize, col as usize])), ..Default::default()});
     }
     else {
       match game.board[row as usize][col as usize] {
         Pieces::Rook(true) | Pieces::Queen(true) | Pieces::Bishop(true) | Pieces::King(true) | Pieces::Knight(true) | Pieces::Pawn(true) => {
-          if !is_white_checked(game.make_move(mov)){
+          if !check_function(game.make_move(mov)){
             if row == 7 {
               moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Queen(false)), ..Default::default()});
               moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Rook(false)), ..Default::default()});
@@ -612,125 +567,26 @@ fn white_pawn_moves (game: &GameState, start: [usize; 2]) -> Vec<Move> {
     } 
   }
   //Pawn captures to the right - available only if there is a piece on that square
-  let row = start[0] as i32 + 1;
+  let row = start[0] as i32 + forward;
   let col = start[1] as i32 + 1;
-  //If a passant capture is available, get the space coordinates - otherwise [0, 0] can never be a capture for white pawns
-  let passant_pos = if let Some(passant_pos) = game.en_passant { passant_pos } else { [0, 0] };
+  //If a passant capture is available, get the space coordinates - otherwise the square that can't be captured by current player's pawns
+  let passant_pos = if let Some(passant_pos) = game.en_passant { passant_pos } else { no_capture };
   let passant_cap = [row as usize, col as usize] == passant_pos;
   if is_in_bounds([row, col]) && (game.board[row as usize][col as usize] != Pieces::Empty || passant_cap) {
     let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
-    if passant_cap && !is_white_checked(game.make_move(mov)) {
+    if passant_cap && !check_function(game.make_move(mov)) {
       //Passant captures cannot promote
-      moves.push(Move { start, end: passant_pos, passant: Some(PassantTypes::PassantCapture([(row - 1) as usize, col as usize])), ..Default::default()});
+      moves.push(Move { start, end: passant_pos, passant: Some(PassantTypes::PassantCapture([(row + (-1 * forward)) as usize, col as usize])), ..Default::default()});
     }
     else {
       match game.board[row as usize][col as usize] {
         Pieces::Rook(true) | Pieces::Queen(true) | Pieces::Bishop(true) | Pieces::King(true) | Pieces::Knight(true) | Pieces::Pawn(true) => {
-          if !is_white_checked(game.make_move(mov)){
+          if !check_function(game.make_move(mov)){
             if row == 7 {
               moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Queen(false)), ..Default::default()});
               moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Rook(false)), ..Default::default()});
               moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Knight(false)), ..Default::default()});
               moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Bishop(false)), ..Default::default()});
-            }
-            else {
-              moves.push(mov);
-            }
-          }
-        },
-        _ => {},
-      };
-    } 
-  }
-  moves
-}
-
-fn black_pawn_moves (game: &GameState, start: [usize; 2]) -> Vec<Move> {
-  let mut moves = Vec::new();
-  if !game.curr_move {
-    return moves;
-  }
-  //Pawn moves forward one - available if square ahead is empty and in bounds
-  let row = start[0] as i32 - 1;
-  let col = start[1] as i32;
-  if is_in_bounds([row, col]) && game.board[row as usize][col as usize] == Pieces::Empty {
-    let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
-    if !is_black_checked(game.make_move(mov)){
-      if row == 7 {
-        moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Queen(true)), ..Default::default()});
-        moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Rook(true)), ..Default::default()});
-        moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Knight(true)), ..Default::default()});
-        moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Bishop(true)), ..Default::default()});
-      }
-      else {
-        moves.push(mov);
-      }
-    }
-  }
-  //Pawn moves forward two - available only if the pawn is on it's starting square, then the two squares in front must be empty. Cannot promote with this move
-  if start[0] == 6 {
-    let row = start[0] as i32 - 2;
-    let col = start[1] as i32;
-    if game.board[(row + 1) as usize][col as usize] == Pieces::Empty && game.board[row as usize][col as usize] == Pieces::Empty {
-      let passant: Option<PassantTypes> = Some(PassantTypes::PassantAvailable([(row + 1) as usize, col as usize]));
-      let mov = Move {start, end: [row as usize, col as usize], passant, ..Default::default()};
-      if !is_black_checked(game.make_move(mov)) {
-        moves.push(mov);
-      } 
-    }
-  }
-  //Pawn captures to the left - available only if there is a piece on that square
-  let row = start[0] as i32 - 1;
-  let col = start[1] as i32 - 1;
-  //If a passant capture is available, get the space coordinates - otherwise [7, 7] can never be a capture for black pawns
-  let passant_pos = if let Some(passant_pos) = game.en_passant { passant_pos } else { [7, 7] };
-  let passant_cap = [row as usize, col as usize] == passant_pos;
-  if is_in_bounds([row, col]) && (game.board[row as usize][col as usize] != Pieces::Empty || passant_cap) {
-    let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
-    if passant_cap && !is_black_checked(game.make_move(mov)) {
-      //Passant captures cannot promote
-      moves.push(Move { start, end: passant_pos, passant: Some(PassantTypes::PassantCapture([(row + 1) as usize, col as usize])), ..Default::default()});
-    }
-    else {
-      match game.board[row as usize][col as usize] {
-        Pieces::Rook(false) | Pieces::Queen(false) | Pieces::Bishop(false) | Pieces::King(false) | Pieces::Knight(false) | Pieces::Pawn(false) => {
-          if !is_black_checked(game.make_move(mov)){
-            if row == 0 {
-              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Queen(true)), ..Default::default()});
-              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Rook(true)), ..Default::default()});
-              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Knight(true)), ..Default::default()});
-              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Bishop(true)), ..Default::default()});
-            }
-            else {
-              moves.push(mov);
-            }
-          }
-        },
-        _ => {},
-      };
-    } 
-  }
-  //Pawn captures to the right - available only if there is a piece on that square
-  let row = start[0] as i32 - 1;
-  let col = start[1] as i32 + 1;
-  //If a passant capture is available, get the space coordinates - otherwise [0, 0] can never be a capture for white pawns
-  let passant_pos = if let Some(passant_pos) = game.en_passant { passant_pos } else { [0, 0] };
-  let passant_cap = [row as usize, col as usize] == passant_pos;
-  if is_in_bounds([row, col]) && (game.board[row as usize][col as usize] != Pieces::Empty || passant_cap) {
-    let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
-    if passant_cap && !is_black_checked(game.make_move(mov)) {
-      //Passant captures cannot promote
-      moves.push(Move { start, end: passant_pos, passant: Some(PassantTypes::PassantCapture([(row + 1) as usize, col as usize])), ..Default::default()});
-    }
-    else {
-      match game.board[row as usize][col as usize] {
-        Pieces::Rook(false) | Pieces::Queen(false) | Pieces::Bishop(false) | Pieces::King(false) | Pieces::Knight(false) | Pieces::Pawn(false) => {
-          if !is_black_checked(game.make_move(mov)){
-            if row == 0 {
-              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Queen(true)), ..Default::default()});
-              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Rook(true)), ..Default::default()});
-              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Knight(true)), ..Default::default()});
-              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Pieces::Bishop(true)), ..Default::default()});
             }
             else {
               moves.push(mov);
@@ -879,109 +735,12 @@ fn is_black_checked (game: GameState) -> bool {
 
 fn is_in_check (game: GameState) -> Option<bool> {
   //White King
-  //Orthogonal attacks
-  'dir: for direction in [[0, 1], [0, -1], [1, 0], [-1, 0]] {
-    let mut row = game.white_king[0] as i32 + direction[0];
-    let mut col = game.white_king[1] as i32 + direction[1];
-    if !is_in_bounds([row, col]) {
-        continue 'dir;
-    } 
-    while game.board[row as usize][col as usize] == Pieces::Empty {
-      row += direction[0];
-      col += direction[1];
-      if !is_in_bounds([row, col]) {
-        continue 'dir;
-      } 
-    }
-    match game.board[row as usize][col as usize] {
-      Pieces::Rook(true) | Pieces::Queen(true) => return Some(false),
-      _ => {},
-    }
+  if is_white_checked(game) {
+    return Some(false);
   }
-  //Diagonal attacks
-  'dir: for direction in [[1, 1], [1, -1], [-1, 1], [-1, -1]] {
-    let mut row = game.white_king[0] as i32 + direction[0];
-    let mut col = game.white_king[1] as i32 + direction[1];
-    if !is_in_bounds([row, col]) {
-        continue 'dir;
-    } 
-    while game.board[row as usize][col as usize] == Pieces::Empty {
-      row += direction[0];
-      col += direction[1];
-      if !is_in_bounds([row, col]) {
-        continue 'dir;
-      } 
-    }
-    match game.board[row as usize][col as usize] {
-      Pieces::Bishop(true) | Pieces::Queen(true) => return Some(false),
-      Pieces::Pawn(true) => {
-        if row == game.white_king[0] as i32 + 1 {
-          return Some(false);
-        }
-      },
-      _ => {},
-    }
-  }
-  //Knight attacks
-  for direction in [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]] {
-    let row = game.white_king[0] as i32 + direction[0];
-    let col = game.white_king[1] as i32 + direction[1];
-    if is_in_bounds([row, col]) && game.board[row as usize][col as usize] == Pieces::Knight(true) {
-      return Some(false);
-    }
-  }
-
   //Black King
-  //Orthogonal attacks
-  'dir: for direction in [[0, 1], [0, -1], [1, 0], [-1, 0]] {
-    let mut row = game.black_king[0] as i32 + direction[0];
-    let mut col = game.black_king[1] as i32 + direction[1];
-    if !is_in_bounds([row, col]) {
-        continue 'dir;
-    } 
-    while game.board[row as usize][col as usize] == Pieces::Empty {
-      row += direction[0];
-      col += direction[1];
-      if !is_in_bounds([row, col]) {
-        continue 'dir;
-      } 
-    }
-    match game.board[row as usize][col as usize] {
-      Pieces::Rook(false) | Pieces::Queen(false) => return Some(true),
-      _ => {},
-    }
-  }
-  //Diagonal attacks
-  'dir: for direction in [[1, 1], [1, -1], [-1, 1], [-1, -1]] {
-    let mut row = game.black_king[0] as i32 + direction[0];
-    let mut col = game.black_king[1] as i32 + direction[1];
-    if !is_in_bounds([row, col]) {
-        continue 'dir;
-    } 
-    while game.board[row as usize][col as usize] == Pieces::Empty {
-      row += direction[0];
-      col += direction[1];
-      if !is_in_bounds([row, col]) {
-        continue 'dir;
-      } 
-    }
-    match game.board[row as usize][col as usize] {
-      Pieces::Bishop(false) | Pieces::Queen(false) => return Some(true),
-      Pieces::Pawn(false) => {
-        if row == game.black_king[0] as i32 - 1{
-          return Some(true);
-        }
-      },
-      _ => {},
-    }
-  }
-  //Knight attacks
-  for direction in [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]] {
-    let row = game.black_king[0] as i32 + direction[0];
-    let col = game.black_king[1] as i32 + direction[1];
-    if is_in_bounds([row, col]) && game.board[row as usize][col as usize] == Pieces::Knight(false) {
-      return Some(true);
-    }
+  if is_black_checked(game) {
+    return Some(true);
   }
   None
 }
