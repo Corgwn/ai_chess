@@ -1,6 +1,7 @@
 use std::env;
 use std::fs::File;
 use std::io::{Write, BufReader, BufRead};
+use std::time::Instant;
 
 mod board;
 
@@ -15,7 +16,10 @@ fn main() {
     let game = board::GameState::from_fen(&fen_string);
 
     //Find all valid moves
+    let now = Instant::now();
     let valid_moves = game.valid_moves();
+    let elapsed = now.elapsed();
+    println!("{}", elapsed.as_nanos());
 
     let mut f = File::create(args[2].clone()).unwrap();
     writeln!(f, "{:?}", game).unwrap();
