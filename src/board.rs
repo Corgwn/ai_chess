@@ -86,7 +86,7 @@ impl fmt::Display for Move {
 }
 
 /* Game state representation and member functions */
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct GameState {
   board: [[Pieces; 8]; 8],
   //False represents white, true represents black
