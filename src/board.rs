@@ -1,14 +1,38 @@
 use std::fmt;
 use Pieces::{Rook, Knight, Bishop, Queen, King, Pawn, Empty};
+use rand::{seq::SliceRandom, thread_rng};
+use cpython::{py_module_initializer, PyResult, Python, py_fn};
+
+py_module_initializer! (rust_ai, |py, m| {
+    m.add(py, "__doc__", "This module is implemented in Rust.")?;
+    m.add(py, "find_random_move", py_fn!(py, find_random_move_py(fen: String)))?;
+    Ok(())
+});
+
+pub fn find_random_move (fen: &String) -> Option<String> {
+  let game = GameState::from_fen(fen);
+  let valid_moves = game.valid_moves();
+  let mov = valid_moves.choose(&mut thread_rng())?;
+  Some(mov.to_string())
+}
+
+fn find_random_move_py (_: Python, fen: String) -> PyResult<String> {
+  if let Some(mov) = find_random_move(&fen) {
+    Ok(mov)
+  }
+  else {
+    Ok("".to_owned())
+  }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Pieces {
-  Knight(bool),
-  Rook(bool),
-  Bishop(bool),
-  Queen(bool),
-  King(bool),
-  Pawn(bool),
+  Knight (bool),
+  Rook (bool),
+  Bishop (bool),
+  Queen (bool),
+  King (bool),
+  Pawn (bool),
   Empty,
 }
 
@@ -34,8 +58,8 @@ impl Pieces {
 
 #[derive(Clone, Copy, Debug)]
 enum PassantTypes {
-  PassantCapture([usize; 2]),
-  PassantAvailable([usize; 2]),
+  PassantCapture ([usize; 2]),
+  PassantAvailable ([usize; 2]),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -61,7 +85,8 @@ impl fmt::Display for Move {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+/* Game state representation and member functions */
+#[derive(Clone, Copy, Debug)]
 pub struct GameState {
   board: [[Pieces; 8]; 8],
   //False represents white, true represents black
@@ -244,6 +269,7 @@ impl GameState {
     }
 }
 
+/* Supporting Functions */
 fn rook_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> {
   let mut moves = Vec::new();
   if player != game.curr_move {
@@ -525,7 +551,7 @@ fn pawn_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> {
     }
   }
   //Pawn moves forward two - available only if the pawn is on it's starting square, then the two squares in front must be empty. Cannot promote with this move
-  if start[0] == 1 {
+  if start[0] == [1, 7][player as usize] {
     let row = start[0] as i32 + forward * 2;
     let col = start[1] as i32;
     if game.board[(row - 1) as usize][col as usize] == Empty && game.board[row as usize][col as usize] == Empty {
