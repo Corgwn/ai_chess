@@ -285,7 +285,7 @@ fn rook_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> {
     if !player && is_white_checked(game.make_move(mov)){
       continue 'dir;
     }
-    else if player && is_black_checked(game.make_move(mov)){
+    if player && is_black_checked(game.make_move(mov)){
       continue 'dir;
     }
     //Add moves until we hit a piece or run off the board
