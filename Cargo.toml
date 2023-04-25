@@ -6,11 +6,11 @@ edition = "2021"
 [lib]
 name = "rust_ai"
 crate-type = ["cdylib"]
-path = "src/board.rs"
+path = "src/ai.rs"
 
 [[bin]]
 name = "ai"
-path = "ai.rs"
+path = "src/ai.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

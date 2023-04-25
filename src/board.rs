@@ -1,29 +1,4 @@
 use std::fmt;
-use Pieces::{Rook, Knight, Bishop, Queen, King, Pawn, Empty};
-use rand::{seq::SliceRandom, thread_rng};
-use cpython::{py_module_initializer, PyResult, Python, py_fn};
-
-py_module_initializer! (rust_ai, |py, m| {
-    m.add(py, "__doc__", "This module is implemented in Rust.")?;
-    m.add(py, "find_random_move", py_fn!(py, find_random_move_py(fen: String)))?;
-    Ok(())
-});
-
-pub fn find_random_move (fen: &String) -> Option<String> {
-  let game = GameState::from_fen(fen);
-  let valid_moves = game.valid_moves();
-  let mov = valid_moves.choose(&mut thread_rng())?;
-  Some(mov.to_string())
-}
-
-fn find_random_move_py (_: Python, fen: String) -> PyResult<String> {
-  if let Some(mov) = find_random_move(&fen) {
-    Ok(mov)
-  }
-  else {
-    Ok("".to_owned())
-  }
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Pieces {
@@ -35,6 +10,7 @@ enum Pieces {
   Pawn (bool),
   Empty,
 }
+use Pieces::{Rook, Knight, Bishop, Queen, King, Pawn, Empty};
 
 impl Pieces {
   pub fn from (piece: &char) -> Pieces {
@@ -53,6 +29,21 @@ impl Pieces {
       'R' => Rook(false),
       _ => Empty
     }
+  }
+}
+
+impl fmt::Display for Pieces {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    let piece = match self {
+      Rook(_) => "r",
+      Knight(_) => "n",
+      Bishop(_) => "b",
+      Queen(_) => "q",
+      King(_) => "k",
+      Pawn(_) => "p",
+      _ => "",
+    };
+    write!(f, "{}", piece)
   }
 }
 
@@ -81,7 +72,14 @@ pub struct Move {
 
 impl fmt::Display for Move {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-      write!(f, "{}{}{}{}", to_let(self.start[1]), self.start[0] + 1, to_let(self.end[1]), self.end[0] + 1)
+      let promotion;
+      if let Some(piece) = self.promote {
+        promotion = piece.to_string();
+      }
+      else {
+        promotion = "".to_owned();
+      }
+      write!(f, "{}{}{}{}{}", to_let(self.start[1]), self.start[0] + 1, to_let(self.end[1]), self.end[0] + 1, promotion)
   }
 }
 
@@ -555,7 +553,7 @@ fn pawn_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> {
     let row = start[0] as i32 + forward * 2;
     let col = start[1] as i32;
     if game.board[(row - 1) as usize][col as usize] == Empty && game.board[row as usize][col as usize] == Empty {
-      let passant: Option<PassantTypes> = Some(PassantTypes::PassantAvailable([(row + (-1 * forward)) as usize, col as usize]));
+      let passant: Option<PassantTypes> = Some(PassantTypes::PassantAvailable([(row + -forward) as usize, col as usize]));
       let mov = Move {start, end: [row as usize, col as usize], passant, ..Default::default()};
       if !check_function(game.make_move(mov)) {
         moves.push(mov);
@@ -572,7 +570,7 @@ fn pawn_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> {
     let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
     if passant_cap && !check_function(game.make_move(mov)) {
       //Passant captures cannot promote
-      moves.push(Move { start, end: passant_pos, passant: Some(PassantTypes::PassantCapture([(row + (-1 * forward)) as usize, col as usize])), ..Default::default()});
+      moves.push(Move { start, end: passant_pos, passant: Some(PassantTypes::PassantCapture([(row + -forward) as usize, col as usize])), ..Default::default()});
     }
     else {
       match game.board[row as usize][col as usize] {
@@ -603,7 +601,7 @@ fn pawn_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> {
     let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
     if passant_cap && !check_function(game.make_move(mov)) {
       //Passant captures cannot promote
-      moves.push(Move { start, end: passant_pos, passant: Some(PassantTypes::PassantCapture([(row + (-1 * forward)) as usize, col as usize])), ..Default::default()});
+      moves.push(Move { start, end: passant_pos, passant: Some(PassantTypes::PassantCapture([(row + -forward) as usize, col as usize])), ..Default::default()});
     }
     else {
       match game.board[row as usize][col as usize] {
