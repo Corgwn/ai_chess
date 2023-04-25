@@ -285,17 +285,23 @@ fn rook_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> {
     if !player && is_white_checked(game.make_move(mov)){
       continue 'dir;
     }
-    if player && is_black_checked(game.make_move(mov)){
+    else if player && is_black_checked(game.make_move(mov)){
       continue 'dir;
     }
     //Add moves until we hit a piece or run off the board
     while game.board[row as usize][col as usize] == Empty {
-      moves.push(Move {start, end: [row as usize, col as usize], ..Default::default()});
+      let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
+      if !player && !is_white_checked(game.make_move(mov)){
+        moves.push(mov);
+      }
+      if player && !is_black_checked(game.make_move(mov)){
+        moves.push(mov);
+      }
       row += direction[0];
       col += direction[1];
       if !is_in_bounds([row, col]) {
         continue 'dir;
-      } 
+      }
     }
     //Find which piece we've hit and add moves acccordingly
     match game.board[row as usize][col as usize] {
@@ -381,7 +387,22 @@ fn bishop_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move>
     if !is_in_bounds([row, col]) {
         continue 'dir;
     }
-    //See if moving in this position causes the current player to be put in check
+    //Add moves until the direction hits a piece or goes off the board
+    while game.board[row as usize][col as usize] == Empty {
+      let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
+      if !player && !is_white_checked(game.make_move(mov)){
+        moves.push(mov);
+      }
+      if player && !is_black_checked(game.make_move(mov)){
+        moves.push(mov);
+      }
+      row += direction[0];
+      col += direction[1];
+      if !is_in_bounds([row, col]) {
+        continue 'dir;
+      }
+    }
+    //Find which piece we hit and add moves accordingly
     let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
     if !player && is_white_checked(game.make_move(mov)){
       continue 'dir;
@@ -389,29 +410,19 @@ fn bishop_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move>
     if player && is_black_checked(game.make_move(mov)){
       continue 'dir;
     }
-    //Add moves until the direction hits a piece or goes off the board
-    while game.board[row as usize][col as usize] == Empty {
-      moves.push(Move {start, end: [row as usize, col as usize], ..Default::default()});
-      row += direction[0];
-      col += direction[1];
-      if !is_in_bounds([row, col]) {
-        continue 'dir;
-      } 
-    }
-    //Find which piece we hit and add moves accordingly
     match game.board[row as usize][col as usize] {
       //Black piece
       Rook(true) | Queen(true) | Bishop(true) | King(true) | Knight(true) | Pawn(true) => {
         //White's turn
         if !player {
-          moves.push(Move {start, end: [row as usize, col as usize], ..Default::default()});
+          moves.push(mov);
         }
       },
       //White piece
       Rook(false) | Queen(false) | Bishop(false) | King(false) | Knight(false) | Pawn(false) => {
         //Black's turn
         if player {
-          moves.push(Move {start, end: [row as usize, col as usize], ..Default::default()});
+          moves.push(mov);
         }
       },
       _ => {},
@@ -574,8 +585,8 @@ fn pawn_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> {
     }
     else {
       match game.board[row as usize][col as usize] {
-        Rook(true) | Queen(true) | Bishop(true) | King(true) | Knight(true) | Pawn(true) => {
-          if !check_function(game.make_move(mov)){
+        Rook(player) | Queen(player) | Bishop(player) | King(player) | Knight(player) | Pawn(player) => {
+          if player != game.curr_move && !check_function(game.make_move(mov)){
             if row == 7 {
               moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Queen(false)), ..Default::default()});
               moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Rook(false)), ..Default::default()});
@@ -605,8 +616,8 @@ fn pawn_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> {
     }
     else {
       match game.board[row as usize][col as usize] {
-        Rook(true) | Queen(true) | Bishop(true) | King(true) | Knight(true) | Pawn(true) => {
-          if !check_function(game.make_move(mov)){
+        Rook(player) | Queen(player) | Bishop(player) | King(player) | Knight(player) | Pawn(player) => {
+          if player != game.curr_move && !check_function(game.make_move(mov)){
             if row == 7 {
               moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Queen(false)), ..Default::default()});
               moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Rook(false)), ..Default::default()});
