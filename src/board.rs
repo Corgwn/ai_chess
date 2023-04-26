@@ -136,7 +136,10 @@ impl GameState {
       //Read En Passant targets
       let temp = fields.next().unwrap();
       let passant: Option<[usize; 2]> = if !temp.eq("-") {
-        Some([to_num(temp.chars().next().unwrap()), to_num(temp.chars().next().unwrap())])
+        let mut chars = temp.chars();
+        let col = to_num(chars.next().unwrap());
+        let row = (chars.next().unwrap().to_digit(10).unwrap() - 1) as usize;
+        Some([row, col])
       }
       else {
         None
@@ -600,7 +603,7 @@ fn pawn_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> {
         },
         _ => {},
       };
-    } 
+    }
   }
   //Pawn captures to the right - available only if there is a piece on that square
   let row = start[0] as i32 + forward;
