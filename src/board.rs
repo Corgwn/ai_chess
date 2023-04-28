@@ -1,7 +1,10 @@
 use std::fmt;
 
+const WHITE: bool = false;
+const BLACK: bool = true;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Pieces {
+pub enum Pieces {
   Knight (bool),
   Rook (bool),
   Bishop (bool),
@@ -10,23 +13,23 @@ enum Pieces {
   Pawn (bool),
   Empty,
 }
-use Pieces::{Rook, Knight, Bishop, Queen, King, Pawn, Empty};
+use Pieces::*;
 
 impl Pieces {
   pub fn from (piece: &char) -> Pieces {
     match piece {
-      'r' => Rook(true),
-      'n' => Knight(true),
-      'b' => Bishop(true),
-      'q' => Queen(true),
-      'k' => King(true),
-      'p' => Pawn(true),
-      'P' => Pawn(false),
-      'K' => King(false),
-      'Q' => Queen(false),
-      'B' => Bishop(false),
-      'N' => Knight(false),
-      'R' => Rook(false),
+      'r' => Rook(BLACK),
+      'n' => Knight(BLACK),
+      'b' => Bishop(BLACK),
+      'q' => Queen(BLACK),
+      'k' => King(BLACK),
+      'p' => Pawn(BLACK),
+      'P' => Pawn(WHITE),
+      'K' => King(WHITE),
+      'Q' => Queen(WHITE),
+      'B' => Bishop(WHITE),
+      'N' => Knight(WHITE),
+      'R' => Rook(WHITE),
       _ => Empty
     }
   }
@@ -48,13 +51,13 @@ impl fmt::Display for Pieces {
 }
 
 #[derive(Clone, Copy, Debug)]
-enum PassantTypes {
+pub enum PassantTypes {
   PassantCapture ([usize; 2]),
   PassantAvailable ([usize; 2]),
 }
 
 #[derive(Clone, Copy, Debug)]
-enum CastleTypes {
+pub enum CastleTypes {
   WhiteKing,
   WhiteQueen,
   BlackKing,
@@ -63,11 +66,11 @@ enum CastleTypes {
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Move {
-  start: [usize; 2],
-  end: [usize; 2],
-  castle: Option<CastleTypes>,
-  promote: Option<Pieces>,
-  passant: Option<PassantTypes>,
+  pub start: [usize; 2],
+  pub end: [usize; 2],
+  pub castle: Option<CastleTypes>,
+  pub promote: Option<Pieces>,
+  pub passant: Option<PassantTypes>,
 }
 
 impl fmt::Display for Move {
@@ -124,8 +127,8 @@ impl GameState {
 
       //Read current move
       let player: bool = match fields.next().unwrap() {
-        "b" => true,
-        "w" => false,
+        "b" => BLACK,
+        "w" => WHITE,
         _ => panic!("Invalid FEN String")
       };
 
@@ -155,8 +158,8 @@ impl GameState {
       for (i, row) in board_state.iter().enumerate() {
         for (j, square) in row.iter().enumerate() {
           match square {
-            King(true) => black_king = [i, j],
-            King(false) => white_king = [i, j],
+            King(BLACK) => black_king = [i, j],
+            King(WHITE) => white_king = [i, j],
             _ => continue,
           }
         }
@@ -221,23 +224,23 @@ impl GameState {
       }
       //Update the kings position
       match piece {
-        King(true) => result.black_king = mov.end,
-        King(false) => result.white_king = mov.end,
+        King(BLACK) => result.black_king = mov.end,
+        King(WHITE) => result.white_king = mov.end,
         _ => {},
       }
       //Update who is in check
       result.check = is_in_check(result);
       //Update castling rights
       match piece {
-        King(true) => {
+        King(BLACK) => {
           result.castling_rights[2] = false;
           result.castling_rights[3] = false; 
         },
-        King(false) => {
+        King(WHITE) => {
           result.castling_rights[0] = false;
           result.castling_rights[1] = false; 
         },
-        Rook(true) => {
+        Rook(BLACK) => {
           if mov.start == [7, 7] {
             result.castling_rights[2] = false;
           }
@@ -245,7 +248,7 @@ impl GameState {
             result.castling_rights[3] = false;
           }
         },
-        Rook(false) => {
+        Rook(WHITE) => {
           if mov.start == [0, 7] {
             result.castling_rights[0] = false;
           }
@@ -256,7 +259,7 @@ impl GameState {
         _ => {},
       }
       //Update half moves
-      if capture || Pawn(false) == piece || Pawn(true) == piece {
+      if capture || Pawn(WHITE) == piece || Pawn(BLACK) == piece {
         result.half_moves = 0;
       }
       else {
@@ -309,14 +312,14 @@ fn rook_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> {
     //Find which piece we've hit and add moves acccordingly
     match game.board[row as usize][col as usize] {
       //Black piece
-      Rook(true) | Queen(true) | Bishop(true) | King(true) | Knight(true) | Pawn(true) => {
+      Rook(BLACK) | Queen(BLACK) | Bishop(BLACK) | King(BLACK) | Knight(BLACK) | Pawn(BLACK) => {
         //White's turn
         if !player {
           moves.push(Move {start, end: [row as usize, col as usize], ..Default::default()});
         }
       },
       //White's piece
-      Rook(false) | Queen(false) | Bishop(false) | King(false) | Knight(false) | Pawn(false) => {
+      Rook(WHITE) | Queen(WHITE) | Bishop(WHITE) | King(WHITE) | Knight(WHITE) | Pawn(WHITE) => {
         //Black's turn
         if player {
           moves.push(Move {start, end: [row as usize, col as usize], ..Default::default()});
@@ -343,7 +346,7 @@ fn knight_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move>
       //Check for a piece at the position and react accordingly
       match game.board[row as usize][col as usize] {
         //Black piece
-        Rook(true) | Queen(true) | Bishop(true) | King(true) | Knight(true) | Pawn(true) => {
+        Rook(BLACK) | Queen(BLACK) | Bishop(BLACK) | King(BLACK) | Knight(BLACK) | Pawn(BLACK) => {
           //White's turn
           if !player {
             let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
@@ -353,7 +356,7 @@ fn knight_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move>
           }
         },
         //White piece
-        Rook(false) | Queen(false) | Bishop(false) | King(false) | Knight(false) | Pawn(false) => {
+        Rook(WHITE) | Queen(WHITE) | Bishop(WHITE) | King(WHITE) | Knight(WHITE) | Pawn(WHITE) => {
           //Black's turn
           if player {
             let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
@@ -415,14 +418,14 @@ fn bishop_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move>
     }
     match game.board[row as usize][col as usize] {
       //Black piece
-      Rook(true) | Queen(true) | Bishop(true) | King(true) | Knight(true) | Pawn(true) => {
+      Rook(BLACK) | Queen(BLACK) | Bishop(BLACK) | King(BLACK) | Knight(BLACK) | Pawn(BLACK) => {
         //White's turn
         if !player {
           moves.push(mov);
         }
       },
       //White piece
-      Rook(false) | Queen(false) | Bishop(false) | King(false) | Knight(false) | Pawn(false) => {
+      Rook(WHITE) | Queen(WHITE) | Bishop(WHITE) | King(WHITE) | Knight(WHITE) | Pawn(WHITE) => {
         //Black's turn
         if player {
           moves.push(mov);
@@ -459,7 +462,7 @@ fn king_moves (game: & GameState, start: [usize; 2], player: bool) -> Vec<Move> 
     //Check which piece type is at the desired move position
     match game.board[row as usize][col as usize] {
       //If it's a black piece
-      Rook(true) | Queen(true) | Bishop(true) | King(true) | Knight(true) | Pawn(true) => {
+      Rook(BLACK) | Queen(BLACK) | Bishop(BLACK) | King(BLACK) | Knight(BLACK) | Pawn(BLACK) => {
         //If it's white's turn
         if !player {
           let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
@@ -469,7 +472,7 @@ fn king_moves (game: & GameState, start: [usize; 2], player: bool) -> Vec<Move> 
         }
       },
       //If it's a white piece
-      Rook(false) | Queen(false) | Bishop(false) | King(false) | Knight(false) | Pawn(false) => {
+      Rook(WHITE) | Queen(WHITE) | Bishop(WHITE) | King(WHITE) | Knight(WHITE) | Pawn(WHITE) => {
         //If it's black's turn
         if player {
           let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
@@ -491,12 +494,12 @@ fn king_moves (game: & GameState, start: [usize; 2], player: bool) -> Vec<Move> 
     }
   }
   //If someone is in check, either the game is over or it's the current player and therefore can't castle
-  if let Some(_check) = game.check {
+  if game.check != None {
     return moves;
   }
   match player {
     //White Castles
-    false => {
+    WHITE => {
       //King side Castle
       if game.castling_rights[0] && game.board[0][5] == Empty && game.board[0][6] == Empty {
         let mov1 = Move {start, end: [0, 5], ..Default::default()};
@@ -515,7 +518,7 @@ fn king_moves (game: & GameState, start: [usize; 2], player: bool) -> Vec<Move> 
       }
     },
     //Black Castles
-    true => {
+    BLACK => {
       //King side Castle
       if game.castling_rights[2] && game.board[7][5] == Empty && game.board[7][6] == Empty {
         let mov1 = Move {start, end: [7, 5], ..Default::default()};
@@ -551,11 +554,11 @@ fn pawn_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> {
   if is_in_bounds([row, col]) && game.board[row as usize][col as usize] == Empty {
     let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
     if !check_function(game.make_move(mov)){
-      if row == 7 {
-        moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Queen(false)), ..Default::default()});
-        moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Rook(false)), ..Default::default()});
-        moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Knight(false)), ..Default::default()});
-        moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Bishop(false)), ..Default::default()});
+      if row == [7, 1][game.curr_move as usize] {
+        moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Queen(game.curr_move)), ..Default::default() });
+        moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Rook(game.curr_move)), ..Default::default() });
+        moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Knight(game.curr_move)), ..Default::default() });
+        moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Bishop(game.curr_move)), ..Default::default() });
       }
       else {
         moves.push(mov);
@@ -590,11 +593,11 @@ fn pawn_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> {
       match game.board[row as usize][col as usize] {
         Rook(player) | Queen(player) | Bishop(player) | King(player) | Knight(player) | Pawn(player) => {
           if player != game.curr_move && !check_function(game.make_move(mov)){
-            if row == 7 {
-              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Queen(false)), ..Default::default()});
-              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Rook(false)), ..Default::default()});
-              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Knight(false)), ..Default::default()});
-              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Bishop(false)), ..Default::default()});
+            if row == [7, 1][game.curr_move as usize] {
+              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Queen(game.curr_move)), ..Default::default() });
+              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Rook(game.curr_move)), ..Default::default() });
+              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Knight(game.curr_move)), ..Default::default() });
+              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Bishop(game.curr_move)), ..Default::default() });
             }
             else {
               moves.push(mov);
@@ -621,11 +624,11 @@ fn pawn_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> {
       match game.board[row as usize][col as usize] {
         Rook(player) | Queen(player) | Bishop(player) | King(player) | Knight(player) | Pawn(player) => {
           if player != game.curr_move && !check_function(game.make_move(mov)){
-            if row == 7 {
-              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Queen(false)), ..Default::default()});
-              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Rook(false)), ..Default::default()});
-              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Knight(false)), ..Default::default()});
-              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Bishop(false)), ..Default::default()});
+            if row == [7, 1][game.curr_move as usize] {
+              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Queen(game.curr_move)), ..Default::default() });
+              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Rook(game.curr_move)), ..Default::default() });
+              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Knight(game.curr_move)), ..Default::default() });
+              moves.push(Move { start, end: [row as usize, col as usize], promote: Some(Bishop(game.curr_move)), ..Default::default() });
             }
             else {
               moves.push(mov);
@@ -662,7 +665,7 @@ fn is_white_checked (game: GameState) -> bool {
       } 
     }
     match game.board[row as usize][col as usize] {
-      Rook(true) | Queen(true) => return true,
+      Rook(BLACK) | Queen(BLACK) => return true,
       _ => {},
     }
   }
@@ -681,12 +684,8 @@ fn is_white_checked (game: GameState) -> bool {
       } 
     }
     match game.board[row as usize][col as usize] {
-      Bishop(true) | Queen(true) => return true,
-      Pawn(true) => {
-        if row == game.white_king[0] as i32 + 1 {
-          return true;
-        }
-      },
+      Bishop(BLACK) | Queen(BLACK) => return true,
+      Pawn(BLACK) => if row == game.white_king[0] as i32 + 1 { return true },
       _ => {},
     }
   }
@@ -694,7 +693,7 @@ fn is_white_checked (game: GameState) -> bool {
   for direction in [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]] {
     let row = game.white_king[0] as i32 + direction[0];
     let col = game.white_king[1] as i32 + direction[1];
-    if is_in_bounds([row, col]) && game.board[row as usize][col as usize] == Knight(true) {
+    if is_in_bounds([row, col]) && game.board[row as usize][col as usize] == Knight(BLACK) {
       return true;
     }
   }
@@ -702,7 +701,7 @@ fn is_white_checked (game: GameState) -> bool {
   for direction in [[1, 1], [1, -1], [-1, 1], [-1, -1], [0, 1], [0, -1], [1, 0], [-1, 0]] {
     let row = game.white_king[0] as i32 + direction[0];
     let col = game.white_king[1] as i32 + direction[1];
-    if is_in_bounds([row, col]) && game.board[row as usize][col as usize] == King(true) {
+    if is_in_bounds([row, col]) && game.board[row as usize][col as usize] == King(BLACK) {
       return true;
     }
   }
@@ -725,7 +724,7 @@ fn is_black_checked (game: GameState) -> bool {
       } 
     }
     match game.board[row as usize][col as usize] {
-      Rook(false) | Queen(false) => return true,
+      Rook(WHITE) | Queen(WHITE) => return true,
       _ => {},
     }
   }
@@ -744,12 +743,8 @@ fn is_black_checked (game: GameState) -> bool {
       } 
     }
     match game.board[row as usize][col as usize] {
-      Bishop(false) | Queen(false) => return true,
-      Pawn(false) => {
-        if row == game.black_king[0] as i32 - 1{
-          return true;
-        }
-      },
+      Bishop(WHITE) | Queen(WHITE) => return true,
+      Pawn(WHITE) => if row == game.black_king[0] as i32 - 1 { return true },
       _ => {},
     }
   }
@@ -757,7 +752,7 @@ fn is_black_checked (game: GameState) -> bool {
   for direction in [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]] {
     let row = game.black_king[0] as i32 + direction[0];
     let col = game.black_king[1] as i32 + direction[1];
-    if is_in_bounds([row, col]) && game.board[row as usize][col as usize] == Knight(false) {
+    if is_in_bounds([row, col]) && game.board[row as usize][col as usize] == Knight(WHITE) {
       return true;
     }
   }
@@ -765,7 +760,7 @@ fn is_black_checked (game: GameState) -> bool {
   for direction in [[1, 1], [1, -1], [-1, 1], [-1, -1], [0, 1], [0, -1], [1, 0], [-1, 0]] {
     let row = game.black_king[0] as i32 + direction[0];
     let col = game.black_king[1] as i32 + direction[1];
-    if is_in_bounds([row, col]) && game.board[row as usize][col as usize] == King(false) {
+    if is_in_bounds([row, col]) && game.board[row as usize][col as usize] == King(WHITE) {
       return true;
     }
   }
@@ -810,6 +805,14 @@ fn to_num (letter: char) -> usize {
     'h' => 7,
     _ => panic!(),
   }
+}
+
+pub fn term (game: &GameState) -> Option<bool> {
+  todo!()
+}
+
+pub fn heuristic (game: &GameState) -> f32 {
+  todo!()
 }
 
 #[test]
