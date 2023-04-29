@@ -41,8 +41,7 @@ py_module_initializer! (rust_ai, |py, m| {
 
 fn find_random_move (fen: &str) -> Option<String> {
   let game = GameState::from_fen(fen);
-  let valid_moves = game.valid_moves();
-  let mov = valid_moves.choose(&mut thread_rng())?;
+  let mov = game.valid_moves.choose(&mut thread_rng())?;
   Some(mov.to_string())
 }
 
@@ -56,7 +55,7 @@ fn find_random_move_py (_: Python, fen: String) -> PyResult<String> {
 }
 
 fn moves_as_strings_py (_: Python, fen: String) -> PyResult<Vec<String>> {
-  let valid_moves = GameState::from_fen(&fen).valid_moves();
+  let valid_moves = GameState::from_fen(&fen).valid_moves;
   let mut mov_strings = valid_moves.iter().map(|mov| mov.to_string()).collect::<Vec<String>>();
   mov_strings.sort();
   Ok(mov_strings)
@@ -64,26 +63,23 @@ fn moves_as_strings_py (_: Python, fen: String) -> PyResult<Vec<String>> {
 
 fn dl_minimax_value (game: GameState, depth: usize, max_player: bool) -> f32 {
     if let Some(winner) = term(&game) {
-        return match winner {
-            true => f32::MIN,
-            false => f32::MAX,
-        }
+        return winner;
     }
     if depth == 0 {
         return heuristic(&game);
     }
     if max_player {
         let mut value = f32::NEG_INFINITY;
-        for action in game.valid_moves() {
-            let action_val = dl_minimax_value(game.clone().make_move(action), depth - 1, !max_player);
+        for action in game.valid_moves.iter() {
+            let action_val = dl_minimax_value(game.clone().make_move(*action), depth - 1, !max_player);
             value = f32::max(value, action_val);
         }
         return value;
     }
     else /* Min Player */ {
         let mut value = f32::INFINITY;
-        for action in game.valid_moves() {
-            let action_val = dl_minimax_value(game.clone().make_move(action), depth - 1, !max_player);
+        for action in game.valid_moves.iter() {
+            let action_val = dl_minimax_value(game.clone().make_move(*action), depth - 1, !max_player);
             value = f32::min(value, action_val);
         }
         return value;
@@ -95,19 +91,19 @@ fn id_minimax (game: GameState, max_player: bool) -> Move {
     let mut best_value: f32 = 0.0;
     let mut best_move: Move = Move {..Default::default()};
     while best_value != f32::MIN || best_value != f32::MAX {
-        for action in game.valid_moves() {
-        let minimax_value = dl_minimax_value(game.clone().make_move(action), depth, max_player);
+        for action in game.valid_moves.iter() {
+        let minimax_value = dl_minimax_value(game.clone().make_move(*action), depth, max_player);
         match max_player {
             true => {
                 if best_value < minimax_value {
                     best_value = minimax_value;
-                    best_move = action;
+                    best_move = *action;
                 }
             },
             false => {
                 if best_value > minimax_value {
                     best_value = minimax_value;
-                    best_move = action;
+                    best_move = *action;
                 }
             }
         }
