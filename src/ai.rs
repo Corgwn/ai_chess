@@ -21,15 +21,16 @@ fn main() {
     //Find all valid moves
     let now = Instant::now();
     let valid_moves = game.valid_moves();
+    let best_move = id_minimax(game.clone(), !game.curr_move);
     let elapsed = now.elapsed();
-    println!("{}", elapsed.as_nanos());
+    println!("{}s", elapsed.as_secs());
 
     let mut f = File::create(args[2].clone()).unwrap();
-    writeln!(f, "{:?}", game).unwrap();
     writeln!(f, "{} moves:", valid_moves.len()).unwrap();
     for mov in valid_moves {
-        writeln!(f, "{}", mov).unwrap();
+        write!(f, "{} ", mov).unwrap();
     }
+    writeln!(f, "\nMy move: {}", best_move).unwrap();
 }
 
 py_module_initializer! (rust_ai, |py, m| {
@@ -74,7 +75,7 @@ fn dl_minimax_value (game: GameState, depth: usize, max_player: bool) -> f32 {
             let action_val = dl_minimax_value(game.clone().make_move(*action), depth - 1, !max_player);
             value = f32::max(value, action_val);
         }
-        return value;
+        value
     }
     else /* Min Player */ {
         let mut value = f32::INFINITY;
@@ -82,32 +83,39 @@ fn dl_minimax_value (game: GameState, depth: usize, max_player: bool) -> f32 {
             let action_val = dl_minimax_value(game.clone().make_move(*action), depth - 1, !max_player);
             value = f32::min(value, action_val);
         }
-        return value;
+        value
     }
 }
 
 fn id_minimax (game: GameState, max_player: bool) -> Move {
-    let depth: usize = 1;
+    let mut depth: usize = 1;
     let mut best_value: f32 = 0.0;
-    let mut best_move: Move = Move {..Default::default()};
+    let mut best_move = game.valid_moves[0].clone();
     while best_value != f32::MIN || best_value != f32::MAX {
+        let now = Instant::now();
+        println!("Checking Depth {depth}");
         for action in game.valid_moves.iter() {
-        let minimax_value = dl_minimax_value(game.clone().make_move(*action), depth, max_player);
-        match max_player {
-            true => {
-                if best_value < minimax_value {
-                    best_value = minimax_value;
-                    best_move = *action;
-                }
-            },
-            false => {
-                if best_value > minimax_value {
-                    best_value = minimax_value;
-                    best_move = *action;
+            let minimax_value = dl_minimax_value(game.clone().make_move(*action), depth, max_player);
+            match max_player {
+                true => {
+                    if best_value < minimax_value {
+                        best_value = minimax_value;
+                        best_move = *action;
+                    }
+                },
+                false => {
+                    if best_value > minimax_value {
+                        best_value = minimax_value;
+                        best_move = *action;
+                    }
                 }
             }
         }
+        depth += 1;
+        println!("Took {:?} milliseconds, best move so far: {}", now.elapsed().as_millis(), best_move);
+        if depth >= 6 {
+            break;
         }
     }
-    return best_move;
+    best_move
 }

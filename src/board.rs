@@ -1,9 +1,9 @@
-use std::fmt;
+use std::{fmt, collections::HashMap};
 
 const WHITE: bool = false;
 const BLACK: bool = true;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Pieces {
   Knight (bool),
   Rook (bool),
@@ -826,7 +826,26 @@ pub fn term (game: &GameState) -> Option<f32> {
 }
 
 pub fn heuristic (game: &GameState) -> f32 {
-  todo!()
+  let mut result = 0.0;
+  //Count point values
+  let mut piece_counts: HashMap<Pieces, usize> = HashMap::new();
+  for line in game.board {
+      for piece in line {
+        *piece_counts.entry(piece).or_default() += 1;
+      }
+  }
+  for (piece, number) in piece_counts {
+    match piece {
+      Empty => {},
+      Queen(player) => result += [9.0, -9.0][player as usize] * number as f32,
+      Rook(player) => result += [5.0, -5.0][player as usize] * number as f32,
+      Bishop(player) => result += [3.0, -3.0][player as usize] * number as f32,
+      Knight(player) => result += [3.0, -3.0][player as usize] * number as f32,
+      King(player) => result += [3.5, -3.5][player as usize] * number as f32,
+      Pawn(player) => result += [1.0, -1.0][player as usize] * number as f32,
+    }
+  }
+  result
 }
 
 #[test]

@@ -11,5 +11,6 @@
 /target
 
 test*
+id_test*
 
 .vscode/
