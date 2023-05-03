@@ -40,6 +40,7 @@ py_module_initializer! (rust_ai, |py, m| {
     m.add(py, "__doc__", "This module is implemented in Rust.")?;
     m.add(py, "find_random_move", py_fn!(py, find_random_move_py(fen: String)))?;
     m.add(py, "moves_as_strings", py_fn!(py, moves_as_strings_py(fen: String)))?;
+    m.add(py, "id_minimax", py_fn!(py, id_minimax_py(fen: String)))?;
     Ok(())
 });
 
@@ -121,4 +122,9 @@ fn id_minimax (game: GameState, max_player: bool) -> Move {
         }
     }
     best_move
+}
+
+fn id_minimax_py (_: Python, fen: String) -> PyResult<String> {
+    let game = GameState::from_fen(&fen);
+    Ok(id_minimax(game.clone(), !&game.curr_move).to_string())
 }
