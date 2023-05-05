@@ -24,7 +24,7 @@ fn main() {
     let now = Instant::now();
     let valid_moves = game.valid_moves();
     println!("Finding Best Move");
-    let best_move = id_minimax(game.clone(), !game.curr_move);
+    let best_move = id_minimax(game.clone(), !game.curr_move, 900000000000);
     let elapsed = now.elapsed();
     println!("{}s", elapsed.as_secs());
 
@@ -40,7 +40,7 @@ py_module_initializer! (rust_ai, |py, m| {
     m.add(py, "__doc__", "This module is implemented in Rust.")?;
     m.add(py, "find_random_move", py_fn!(py, find_random_move_py(fen: String)))?;
     m.add(py, "moves_as_strings", py_fn!(py, moves_as_strings_py(fen: String)))?;
-    m.add(py, "id_minimax", py_fn!(py, id_minimax_py(fen: String)))?;
+    m.add(py, "id_minimax", py_fn!(py, id_minimax_py(fen: String, time: u64)))?;
     Ok(())
 });
 
@@ -91,11 +91,14 @@ fn dl_minimax_value (game: GameState, depth: usize, max_player: bool) -> i32 {
     }
 }
 
-fn id_minimax (game: GameState, max_player: bool) -> Move {
+fn id_minimax (game: GameState, max_player: bool, time_left: u64) -> Move {
     let mut depth: usize = 1;
     let mut best_value: i32 = 0;
     let mut best_move = game.available_moves[0];
-    while best_value != i32::MIN || best_value != i32::MAX {
+    let available_time = time_left / 40;
+    let mut time_elapsed = 0;
+    let mut done = false;
+    while best_value != i32::MIN && best_value != i32::MAX && !done {
         let now = Instant::now();
         println!("Checking Depth {depth}");
         for action in game.available_moves.iter() {
@@ -116,15 +119,16 @@ fn id_minimax (game: GameState, max_player: bool) -> Move {
             }
         }
         depth += 1;
-        println!("Took {:?} milliseconds, best move so far: {}", now.elapsed().as_millis(), best_move);
-        if depth >= 5 {
-            break;
+        time_elapsed = now.elapsed().as_nanos();
+        if time_elapsed >= available_time.into() {
+            done = true;
         }
+        println!("Took {:?} milliseconds, best move so far: {}", now.elapsed().as_millis(), best_move);
     }
     best_move
 }
 
-fn id_minimax_py (_: Python, fen: String) -> PyResult<String> {
+fn id_minimax_py (_: Python, fen: String, time: u64) -> PyResult<String> {
     let game = GameState::from_fen(&fen);
-    Ok(id_minimax(game.clone(), !&game.curr_move).to_string())
+    Ok(id_minimax(game.clone(), !&game.curr_move, time).to_string())
 }
