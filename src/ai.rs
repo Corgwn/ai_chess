@@ -15,7 +15,6 @@ fn main() {
         println!("Must provide an input and output file (in that order)");
         return;
     }
-    println!("Creating gamestate from fen");
     let file = BufReader::new(File::open(&args[1]).unwrap());
     let fen_string = file.lines().next().unwrap().unwrap();
     let game = board::GameState::from_fen(&fen_string);
@@ -66,64 +65,93 @@ fn moves_as_strings_py (_: Python, fen: String) -> PyResult<Vec<String>> {
   Ok(mov_strings)
 }
 
-fn dl_minimax_value (game: GameState, depth: usize, max_player: bool) -> i32 {
+fn max_choice (game: GameState, depth: usize) -> Move {
+    let mut best_move = game.available_moves[0];
+    let mut best_value = i32::MIN;
+
+    for action in game.available_moves.iter() {
+        let minimax_value = min_value(game.clone().make_move(*action), depth);
+        if best_value < minimax_value {
+            best_value = minimax_value;
+            best_move = *action;
+        }
+    }
+    best_move
+}
+
+fn min_choice (game: GameState, depth: usize) -> Move {
+    let mut best_move = game.available_moves[0];
+    let mut best_value = i32::MAX;
+
+    for action in game.available_moves.iter() {
+        let minimax_value = max_value(game.clone().make_move(*action), depth);
+        if best_value > minimax_value {
+            best_value = minimax_value;
+            best_move = *action;
+        }
+    }
+    best_move
+}
+
+fn max_value (game: GameState, depth: usize) -> i32 {
     if let Some(winner) = term(&game) {
         return winner;
     }
     if depth == 0 {
         return heuristic(&game);
     }
-    if max_player {
-        let mut value = i32::MIN;
-        for action in game.available_moves.iter() {
-            let action_val = dl_minimax_value(game.clone().make_move(*action), depth - 1, !max_player);
-            value = i32::max(value, action_val);
-        }
-        value
+    let mut value = i32::MIN;
+    for action in game.available_moves.iter() {
+        let action_val = min_value(game.clone().make_move(*action), depth - 1);
+        value = i32::max(value, action_val);
     }
-    else /* Min Player */ {
-        let mut value = i32::MAX;
-        for action in game.available_moves.iter() {
-            let action_val = dl_minimax_value(game.clone().make_move(*action), depth - 1, !max_player);
-            value = i32::min(value, action_val);
-        }
-        value
+    value
+}
+
+fn min_value (game: GameState, depth: usize) -> i32 {
+    if let Some(winner) = term(&game) {
+        return winner;
     }
+    if depth == 0 {
+        return heuristic(&game);
+    }
+    let mut value = i32::MAX;
+    for action in game.available_moves.iter() {
+        let action_val = max_value(game.clone().make_move(*action), depth - 1);
+        value = i32::min(value, action_val);
+    }
+    value
 }
 
 fn id_minimax (game: GameState, max_player: bool, time_left: u64) -> Move {
+    let mut second_iter_time = Instant::now();
+    let available_time = time_left / 30;
+
     let mut depth: usize = 1;
-    let mut best_value: i32 = 0;
-    let mut best_move = game.available_moves[0];
-    let available_time = time_left / 40;
-    let mut time_elapsed = 0;
     let mut done = false;
-    while best_value != i32::MIN && best_value != i32::MAX && !done {
-        let now = Instant::now();
+    let mut best_move;
+    let move_search = if max_player { max_choice } else { min_choice };
+    
+    best_move = move_search(game.clone(), depth);
+    depth += 1;
+    let mut last_iter_time = Instant::now();
+
+    while !done {
         println!("Checking Depth {depth}");
-        for action in game.available_moves.iter() {
-            let minimax_value = dl_minimax_value(game.clone().make_move(*action), depth, max_player);
-            match max_player {
-                true => {
-                    if best_value < minimax_value {
-                        best_value = minimax_value;
-                        best_move = *action;
-                    }
-                },
-                false => {
-                    if best_value > minimax_value {
-                        best_value = minimax_value;
-                        best_move = *action;
-                    }
-                }
-            }
-        }
+        best_move = move_search(game.clone(), depth);
         depth += 1;
-        time_elapsed = now.elapsed().as_nanos();
-        if time_elapsed >= available_time.into() {
+        
+        let this_iter_time = Instant::now();
+        let time_ratio = (this_iter_time - last_iter_time).as_nanos() / (last_iter_time - second_iter_time).as_nanos();
+        let time_predict = (this_iter_time - last_iter_time).as_nanos() * time_ratio;
+
+        second_iter_time = last_iter_time;
+        last_iter_time = this_iter_time;
+        if this_iter_time.elapsed().as_nanos() + time_predict > available_time as u128 {
             done = true;
         }
-        println!("Took {:?} milliseconds, best move so far: {}", now.elapsed().as_millis(), best_move);
+        println!("Took {:?} milliseconds, best move so far: {}", (this_iter_time - second_iter_time).as_millis(), best_move);
+        println!("Took {time_ratio} times longer than last depth, predicting {time_predict}ns for next depth, done: {done}");
     }
     best_move
 }
