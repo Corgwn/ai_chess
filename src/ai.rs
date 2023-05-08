@@ -70,7 +70,7 @@ fn max_choice (game: GameState, depth: usize) -> Move {
     let mut best_value = i32::MIN;
 
     for action in game.available_moves.iter() {
-        let minimax_value = min_value(game.clone().make_move(*action), depth);
+        let minimax_value = min_value(game.clone().make_move(*action), depth, &i32::MIN, &i32::MAX);
         if best_value < minimax_value {
             best_value = minimax_value;
             best_move = *action;
@@ -84,7 +84,7 @@ fn min_choice (game: GameState, depth: usize) -> Move {
     let mut best_value = i32::MAX;
 
     for action in game.available_moves.iter() {
-        let minimax_value = max_value(game.clone().make_move(*action), depth);
+        let minimax_value = max_value(game.clone().make_move(*action), depth, &i32::MIN, &i32::MAX);
         if best_value > minimax_value {
             best_value = minimax_value;
             best_move = *action;
@@ -93,7 +93,7 @@ fn min_choice (game: GameState, depth: usize) -> Move {
     best_move
 }
 
-fn max_value (game: GameState, depth: usize) -> i32 {
+fn max_value (game: GameState, depth: usize, alpha: &i32, beta: &i32) -> i32 {
     if let Some(winner) = term(&game) {
         return winner;
     }
@@ -101,14 +101,19 @@ fn max_value (game: GameState, depth: usize) -> i32 {
         return heuristic(&game);
     }
     let mut value = i32::MIN;
+    let mut alpha = *alpha;
     for action in game.available_moves.iter() {
-        let action_val = min_value(game.clone().make_move(*action), depth - 1);
+        let action_val = min_value(game.clone().make_move(*action), depth - 1, &alpha, beta);
         value = i32::max(value, action_val);
+        if value >= *beta {
+            return value;
+        }
+        alpha = i32::max(alpha, value);
     }
     value
 }
 
-fn min_value (game: GameState, depth: usize) -> i32 {
+fn min_value (game: GameState, depth: usize, alpha: &i32, beta: &i32) -> i32 {
     if let Some(winner) = term(&game) {
         return winner;
     }
@@ -116,16 +121,21 @@ fn min_value (game: GameState, depth: usize) -> i32 {
         return heuristic(&game);
     }
     let mut value = i32::MAX;
+    let mut beta = *beta;
     for action in game.available_moves.iter() {
-        let action_val = max_value(game.clone().make_move(*action), depth - 1);
+        let action_val = max_value(game.clone().make_move(*action), depth - 1, alpha, &beta);
         value = i32::min(value, action_val);
+        if value <= *alpha {
+            return value;
+        }
+        beta = i32::min(beta, value);
     }
     value
 }
 
 fn id_minimax (game: GameState, max_player: bool, time_left: u64) -> Move {
     let mut second_iter_time = Instant::now();
-    let available_time = time_left / 30;
+    let available_time = time_left / 20;
 
     let mut depth: usize = 1;
     let mut done = false;

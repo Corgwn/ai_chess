@@ -299,15 +299,7 @@ fn rook_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> {
     if !is_in_bounds([row, col]) {
         continue 'dir;
     }
-    //Check if moving in this direction would put the current player in check
-    let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
-    if !player && is_white_checked(&game.test_move(mov)){
-      continue 'dir;
-    }
-    if player && is_black_checked(&game.test_move(mov)){
-      continue 'dir;
-    }
-    //Add moves until we hit a piece or run off the board
+    //Add moves until the direction hits a piece or goes off the board
     while game.board[row as usize][col as usize] == Empty {
       let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
       if !player && !is_white_checked(&game.test_move(mov)){
@@ -323,6 +315,13 @@ fn rook_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> {
       }
     }
     //Find which piece we've hit and add moves acccordingly
+    let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
+    if !player && is_white_checked(&game.test_move(mov)){
+      continue 'dir;
+    }
+    if player && is_black_checked(&game.test_move(mov)){
+      continue 'dir;
+    }
     match game.board[row as usize][col as usize] {
       //Black piece
       Rook(BLACK) | Queen(BLACK) | Bishop(BLACK) | King(BLACK) | Knight(BLACK) | Pawn(BLACK) => {

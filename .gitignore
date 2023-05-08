@@ -10,7 +10,7 @@
 
 /target
 
-test*
+*test*
 id_test*
 
 .vscode/
