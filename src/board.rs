@@ -51,13 +51,13 @@ impl fmt::Display for Pieces {
   }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PassantTypes {
   PassantCapture ([usize; 2]),
   PassantAvailable ([usize; 2]),
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CastleTypes {
   WhiteKing,
   WhiteQueen,
@@ -65,13 +65,14 @@ pub enum CastleTypes {
   BlackQueen,
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct Move {
   pub start: [usize; 2],
   pub end: [usize; 2],
   pub castle: Option<CastleTypes>,
   pub promote: Option<Pieces>,
   pub passant: Option<PassantTypes>,
+  pub capture: bool,
 }
 
 impl fmt::Display for Move {
@@ -84,6 +85,55 @@ impl fmt::Display for Move {
         promotion = "".to_owned();
       }
       write!(f, "{}{}{}{}{}", to_let(self.start[1]), self.start[0] + 1, to_let(self.end[1]), self.end[0] + 1, promotion)
+  }
+}
+
+impl Ord for Move {
+  fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    let mut mov1_score = 0;
+    let mut mov2_score = 0;
+    //Find self's score
+    //if let(check) = self.check {
+    //  mov1_score += 1;
+    //}
+    if self.castle.is_some() {
+      mov1_score += 2;
+    }
+    if self.capture {
+      mov1_score += 3;
+    }
+    if self.promote.is_some() {
+      mov1_score += 2;
+    }
+    if let Some(passant) = self.passant {
+      match passant {
+        PassantTypes::PassantAvailable(_) => {},
+        PassantTypes::PassantCapture(_) => mov1_score += 15,
+      }
+    }
+    //Find other's score
+    if other.castle.is_some() {
+      mov2_score += 2;
+    }
+    if other.capture {
+      mov2_score += 3;
+    }
+    if other.promote.is_some() {
+      mov2_score += 2;
+    }
+    if let Some(passant) = other.passant {
+      match passant {
+        PassantTypes::PassantAvailable(_) => {},
+        PassantTypes::PassantCapture(_) => mov2_score += 15,
+      }
+    }
+    mov1_score.cmp(&mov2_score)
+  }
+}
+
+impl PartialOrd for Move {
+  fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    Some(self.cmp(other))
   }
 }
 
@@ -330,14 +380,14 @@ fn rook_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move> {
       Rook(BLACK) | Queen(BLACK) | Bishop(BLACK) | King(BLACK) | Knight(BLACK) | Pawn(BLACK) => {
         //White's turn
         if !player {
-          moves.push(Move {start, end: [row as usize, col as usize], ..Default::default()});
+          moves.push(Move {start, end: [row as usize, col as usize], capture: true, ..Default::default()});
         }
       },
       //White's piece
       Rook(WHITE) | Queen(WHITE) | Bishop(WHITE) | King(WHITE) | Knight(WHITE) | Pawn(WHITE) => {
         //Black's turn
         if player {
-          moves.push(Move {start, end: [row as usize, col as usize], ..Default::default()});
+          moves.push(Move {start, end: [row as usize, col as usize], capture: true, ..Default::default()});
         }
       },
       _ => {},
@@ -374,7 +424,7 @@ fn knight_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move>
         Rook(WHITE) | Queen(WHITE) | Bishop(WHITE) | King(WHITE) | Knight(WHITE) | Pawn(WHITE) => {
           //Black's turn
           if player {
-            let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
+            let mov = Move {start, end: [row as usize, col as usize], capture: true, ..Default::default()};
             if !is_black_checked(&game.test_move(mov)){
               moves.push(mov);
             }
@@ -382,7 +432,7 @@ fn knight_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move>
         },
         //If it's an empty space, either player can move there
         Empty => {
-          let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
+          let mov = Move {start, end: [row as usize, col as usize], capture: true, ..Default::default()};
           if !player && !is_white_checked(&game.test_move(mov)){
             moves.push(mov);
           }
@@ -424,7 +474,7 @@ fn bishop_moves (game: &GameState, start: [usize; 2], player: bool) -> Vec<Move>
       }
     }
     //Find which piece we hit and add moves accordingly
-    let mov = Move {start, end: [row as usize, col as usize], ..Default::default()};
+    let mov = Move {start, end: [row as usize, col as usize], capture: true, ..Default::default()};
     if !player && is_white_checked(&game.test_move(mov)){
       continue 'dir;
     }
