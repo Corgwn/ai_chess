@@ -1078,7 +1078,10 @@ pub fn heuristic (game: &GameState) -> i32 {
   //Consider checks
   if let Some(player) = &game.check {
     if *player == game.curr_move {
-      result -= 20;
+      match *player {
+        BLACK => result += 20,
+        WHITE => result -= 20,
+      }
     }
   }
   //Prefer to have two bishops
