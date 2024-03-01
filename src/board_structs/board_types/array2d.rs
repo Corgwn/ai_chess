@@ -1,3 +1,5 @@
+use crate::board_structs::board;
+use crate::board_structs::board::Board;
 use crate::utils::game_move::{PassantTypes, to_let};
 use crate::utils::game_move::CastleTypes;
 use crate::utils::game_move::to_num;
@@ -5,7 +7,7 @@ use crate::utils::game_move::GameMove;
 use crate::utils::pieces::{Pieces, Pieces::*, BLACK, WHITE};
 
 /* Game state representation and member functions */
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub struct GameState {
     pub board: [[Pieces; 8]; 8],
     //False represents white, true represents black
@@ -16,121 +18,15 @@ pub struct GameState {
     en_passant: Option<[usize; 2]>,
     half_moves: usize,
     full_moves: usize,
-    pub(crate) check: Option<bool>,
+    check: Option<bool>,
     white_king: [usize; 2],
     black_king: [usize; 2],
-    pub available_moves: Vec<GameMove>,
 }
 
 impl GameState {
-    pub fn from_fen(fen: &str) -> GameState {
-        let mut fields = fen.split_ascii_whitespace();
-        //Read board positions
-        let temp = fields.next().unwrap();
-        let board = temp.split('/');
-        let mut board_state: [[Pieces; 8]; 8] = [[Empty; 8]; 8];
-        for (index, line) in board.enumerate() {
-            let mut file: usize = 0;
-            for piece in line.chars() {
-                //Move the index forward when there are spaces
-                if piece.is_ascii_digit() {
-                    file += piece.to_digit(10).unwrap() as usize;
-                }
-                //Add piece to board
-                else {
-                    board_state[7 - index][file] = Pieces::from(&piece);
-                    file += 1;
-                }
-            }
-        }
-
-        //Read current move
-        let player: bool = match fields.next().unwrap() {
-            "b" => BLACK,
-            "w" => WHITE,
-            _ => panic!("Invalid FEN String"),
-        };
-
-        //Read castling rights
-        let temp = fields.next().unwrap();
-        let rights: [bool; 4] = [
-            temp.contains('K'),
-            temp.contains('Q'),
-            temp.contains('k'),
-            temp.contains('q'),
-        ];
-
-        //Read En Passant targets
-        let temp = fields.next().unwrap();
-        let passant: Option<[usize; 2]> = if !temp.eq("-") {
-            let mut chars = temp.chars();
-            let col = to_num(chars.next().unwrap());
-            let row = (chars.next().unwrap().to_digit(10).unwrap() - 1) as usize;
-            Some([row, col])
-        } else {
-            None
-        };
-
-        //Read move numbers
-        let half_moves = fields.next().unwrap().parse::<usize>().unwrap();
-        let full_moves = fields.next().unwrap().parse::<usize>().unwrap();
-
-        //Find king positions
-        let mut black_king = [0, 0];
-        let mut white_king = [0, 0];
-        for (i, row) in board_state.iter().enumerate() {
-            for (j, square) in row.iter().enumerate() {
-                match square {
-                    King(BLACK) => black_king = [i, j],
-                    King(WHITE) => white_king = [i, j],
-                    _ => continue,
-                }
-            }
-        }
-
-        let mut game = GameState {
-            board: board_state,
-            curr_move: player,
-            castling_rights: rights,
-            en_passant: passant,
-            half_moves,
-            full_moves,
-            check: None,
-            white_king,
-            black_king,
-            available_moves: vec![],
-        };
-
-        //Calculate if a king is in check
-        game.check = is_in_check(&game);
-
-        //Calculate valid moves
-        game.available_moves = game.valid_moves();
-        game
-    }
-
-    pub fn valid_moves(&self) -> Vec<GameMove> {
-        let mut moves = Vec::new();
-
-        for i in 0..8 {
-            for j in 0..8 {
-                match self.board[i][j] {
-                    Empty => continue,
-                    Rook(player) => moves.append(&mut rook_moves(self, [i, j], player)),
-                    Knight(player) => moves.append(&mut knight_moves(self, [i, j], player)),
-                    Bishop(player) => moves.append(&mut bishop_moves(self, [i, j], player)),
-                    Queen(player) => moves.append(&mut queen_moves(self, [i, j], player)),
-                    King(player) => moves.append(&mut king_moves(self, [i, j], player)),
-                    Pawn(player) => moves.append(&mut pawn_moves(self, [i, j], player)),
-                }
-            }
-        }
-        moves
-    }
-
     pub fn test_move(&self, mov: GameMove) -> GameState {
         //Expects mov to be a valid move
-        let mut result = self.clone();
+        let mut result = *self;
         let piece = self.board[mov.start[0]][mov.start[1]];
         let capture = result.board[mov.end[0]][mov.end[1]] != Empty;
         //Move the piece
@@ -218,16 +114,127 @@ impl GameState {
         if !result.curr_move {
             result.full_moves += 1
         }
-        //Reset available moves
-        result.available_moves = vec![];
         result
     }
+}
 
-    pub fn make_move(&self, mov: GameMove) -> GameState {
-        let mut result = self.test_move(mov);
-        //Update valid moves
-        result.available_moves = result.valid_moves();
-        result
+impl board::Board for GameState {
+    fn read_from_fen(fen: String) -> Self {
+        let mut fields = fen.split_ascii_whitespace();
+        //Read board positions
+        let temp = fields.next().unwrap();
+        let board = temp.split('/');
+        let mut board_state: [[Pieces; 8]; 8] = [[Empty; 8]; 8];
+        for (index, line) in board.enumerate() {
+            let mut file: usize = 0;
+            for piece in line.chars() {
+                //Move the index forward when there are spaces
+                if piece.is_ascii_digit() {
+                    file += piece.to_digit(10).unwrap() as usize;
+                }
+                //Add piece to board
+                else {
+                    board_state[7 - index][file] = Pieces::from(&piece);
+                    file += 1;
+                }
+            }
+        }
+
+        //Read current move
+        let player: bool = match fields.next().unwrap() {
+            "b" => BLACK,
+            "w" => WHITE,
+            _ => panic!("Invalid FEN String"),
+        };
+
+        //Read castling rights
+        let temp = fields.next().unwrap();
+        let rights: [bool; 4] = [
+            temp.contains('K'),
+            temp.contains('Q'),
+            temp.contains('k'),
+            temp.contains('q'),
+        ];
+
+        //Read En Passant targets
+        let temp = fields.next().unwrap();
+        let passant: Option<[usize; 2]> = if !temp.eq("-") {
+            let mut chars = temp.chars();
+            let col = to_num(chars.next().unwrap());
+            let row = (chars.next().unwrap().to_digit(10).unwrap() - 1) as usize;
+            Some([row, col])
+        } else {
+            None
+        };
+
+        //Read move numbers
+        let half_moves = fields.next().unwrap().parse::<usize>().unwrap();
+        let full_moves = fields.next().unwrap().parse::<usize>().unwrap();
+
+        //Find king positions
+        let mut black_king = [0, 0];
+        let mut white_king = [0, 0];
+        for (i, row) in board_state.iter().enumerate() {
+            for (j, square) in row.iter().enumerate() {
+                match square {
+                    King(BLACK) => black_king = [i, j],
+                    King(WHITE) => white_king = [i, j],
+                    _ => continue,
+                }
+            }
+        }
+
+        let mut game = GameState {
+            board: board_state,
+            curr_move: player,
+            castling_rights: rights,
+            en_passant: passant,
+            half_moves,
+            full_moves,
+            check: None,
+            white_king,
+            black_king,
+        };
+
+        //Calculate if a king is in check
+        game.check = is_in_check(&game);
+
+        game
+    }
+
+    fn get_valid_moves(&self) -> Vec<GameMove> {
+        let mut moves = Vec::new();
+
+        for i in 0..8 {
+            for j in 0..8 {
+                match self.board[i][j] {
+                    Empty => continue,
+                    Rook(player) => moves.append(&mut rook_moves(self, [i, j], player)),
+                    Knight(player) => moves.append(&mut knight_moves(self, [i, j], player)),
+                    Bishop(player) => moves.append(&mut bishop_moves(self, [i, j], player)),
+                    Queen(player) => moves.append(&mut queen_moves(self, [i, j], player)),
+                    King(player) => moves.append(&mut king_moves(self, [i, j], player)),
+                    Pawn(player) => moves.append(&mut pawn_moves(self, [i, j], player)),
+                }
+            }
+        }
+        moves
+    }
+
+    fn make_move(&self, mov: GameMove) -> GameState {
+        self.test_move(mov)
+    }
+
+    fn get_check(&self) -> Option<bool> {
+        self.check
+    }
+
+    fn get_curr_player(&self) -> bool {
+        self.curr_move
+    }
+
+    fn get_board_as_2d(&self) -> [[Pieces; 8]; 8] {
+        self.board
     }
 }
 
@@ -1049,7 +1056,7 @@ fn digit_manipulation() {
         ('g', 6),
         ('h', 7),
     ] {
-        assert!(to_num(character) == number);
-        assert!(to_let(number) == character);
+        assert_eq!(to_num(character), number);
+        assert_eq!(to_let(number), character);
     }
 }

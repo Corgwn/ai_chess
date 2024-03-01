@@ -1,9 +1,11 @@
 use std::env;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader};
 use std::time::Instant;
-use crate::ai_funcs::ai_types::abminimax::id_minimax;
+use crate::ai_funcs::ai_types::abminimax::{ABMinimax};
 use crate::board_structs::board_types::array2d::GameState;
+use crate::board_structs::board::Board;
+use crate::utils::pieces::{BLACK, WHITE};
 
 pub mod board_structs;
 pub mod ai_funcs;
@@ -17,20 +19,32 @@ fn main() {
     }
     let file = BufReader::new(File::open(&args[1]).unwrap());
     let fen_string = file.lines().next().unwrap().unwrap();
-    let game = GameState::from_fen(&fen_string);
+    let mut game: GameState = GameState::read_from_fen(fen_string);
 
-    //Find all valid moves
-    let now = Instant::now();
-    let valid_moves = game.valid_moves();
-    println!("Finding Best Move");
-    let best_move = id_minimax(game.clone(), !game.curr_move, 900000000000);
-    let elapsed = now.elapsed();
-    println!("{}s", elapsed.as_secs());
+    let player1 = ABMinimax {};
+    let player2 = ABMinimax {};
 
-    let mut f = File::create(args[2].clone()).unwrap();
-    writeln!(f, "{} moves:", valid_moves.len()).unwrap();
-    for mov in valid_moves {
-        write!(f, "{} ", mov).unwrap();
+    let mut turn_num: usize = 0;
+    let mut time_left: u128 = 900000000000;
+    while turn_num <= 60 && time_left > 0 && !game.get_valid_moves().is_empty() {
+        let start = Instant::now();
+        let turn: bool = (turn_num % 2) != 0 ;
+        let next_move = match turn {
+            WHITE => player1.find_move(game, WHITE, time_left),
+            BLACK => player2.find_move(game, BLACK, time_left),
+        };
+
+        let turn_color = match turn {
+            WHITE => "WHITE",
+            BLACK => "BLACK",
+        };
+
+        time_left = match time_left.checked_sub(start.elapsed().as_nanos()){
+            None => {break},
+            Some(x) => {x},
+        };
+        turn_num += 1;
+        game = game.make_move(next_move);
+        println!("\nTurn number: {} | Player: {} | Move: {} | Time Left: {}\n", turn_num, turn_color, next_move, time_left);
     }
-    writeln!(f, "\nMy move: {}", best_move).unwrap();
 }

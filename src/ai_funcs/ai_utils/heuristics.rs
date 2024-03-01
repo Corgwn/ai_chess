@@ -1,12 +1,12 @@
-use crate::board_structs::board_types::array2d::GameState;
 use crate::utils::pieces::{Pieces, Pieces::*, BLACK, WHITE};
 
 use std::collections::HashMap;
+use crate::utils::game_move::GameMove;
 
-pub fn term(game: &GameState) -> Option<i32> {
-    if game.available_moves.is_empty() {
-        if game.check.is_some() {
-            Some([i32::MIN + 1, i32::MAX - 1][game.curr_move as usize])
+pub fn term<T: crate::board_structs::board::Board>(game: &T, available_moves: &Vec<GameMove>) -> Option<i32> {
+    if available_moves.is_empty() {
+        if game.get_check().is_some() {
+            Some([i32::MIN + 1, i32::MAX - 1][game.get_curr_player() as usize])
         } else {
             Some(0)
         }
@@ -181,10 +181,9 @@ fn get_position_value(piece: &Pieces, [row, col]: [usize; 2], game_time: bool) -
     }
 }
 
-pub fn heuristic(game: &GameState) -> i32 {
+pub fn heuristic<T: crate::board_structs::board::Board>(game: T) -> i32 {
     let mut result = 0;
-    let game_time = if game
-        .board
+    let game_time = if game.get_board_as_2d()
         .iter()
         .flatten()
         .filter(|x| x != &&Empty && x != &&Pawn(WHITE) && x != &&Pawn(BLACK))
@@ -197,7 +196,7 @@ pub fn heuristic(game: &GameState) -> i32 {
     };
     //Count Pieces and score pieces on position
     let mut piece_counts: HashMap<Pieces, i32> = HashMap::new();
-    for (i, line) in game.board.iter().enumerate() {
+    for (i, line) in game.get_board_as_2d().iter().enumerate() {
         for (j, piece) in line.iter().enumerate() {
             *piece_counts.entry(*piece).or_default() += 1;
             //Get positional advantage of the piece
@@ -217,8 +216,8 @@ pub fn heuristic(game: &GameState) -> i32 {
         }
     }
     //Consider checks
-    if let Some(player) = &game.check {
-        if *player == game.curr_move {
+    if let Some(player) = &game.get_check() {
+        if *player == game.get_curr_player() {
             match *player {
                 BLACK => result += 20,
                 WHITE => result -= 20,
@@ -226,7 +225,7 @@ pub fn heuristic(game: &GameState) -> i32 {
         }
     }
     //Prefer to have two bishops
-    if piece_counts.contains_key(&Bishop(game.curr_move)) && piece_counts.get(&Bishop(game.curr_move)).unwrap() > &1 {
+    if piece_counts.contains_key(&Bishop(game.get_curr_player())) && piece_counts.get(&Bishop(game.get_curr_player())).unwrap() > &1 {
         result += 20;
     }
     result
