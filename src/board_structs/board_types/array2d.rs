@@ -1,9 +1,9 @@
 use crate::board_structs::board;
 use crate::board_structs::board::Board;
-use crate::utils::game_move::{PassantTypes, to_let};
-use crate::utils::game_move::CastleTypes;
 use crate::utils::game_move::to_num;
+use crate::utils::game_move::CastleTypes;
 use crate::utils::game_move::GameMove;
+use crate::utils::game_move::{to_let, PassantTypes};
 use crate::utils::pieces::{Pieces, Pieces::*, BLACK, WHITE};
 
 /* Game state representation and member functions */
@@ -23,100 +23,7 @@ pub struct GameState {
     black_king: [usize; 2],
 }
 
-impl GameState {
-    pub fn test_move(&self, mov: GameMove) -> GameState {
-        //Expects mov to be a valid move
-        let mut result = *self;
-        let piece = self.board[mov.start[0]][mov.start[1]];
-        let capture = result.board[mov.end[0]][mov.end[1]] != Empty;
-        //Move the piece
-        result.board[mov.end[0]][mov.end[1]] = piece;
-        result.board[mov.start[0]][mov.start[1]] = Empty;
-        //Change player
-        result.curr_move = !result.curr_move;
-        //Check if it was a castle and move the corresponding rook accordingly
-        if let Some(castle_type) = mov.castle {
-            match castle_type {
-                CastleTypes::WhiteKing => result.make_move(GameMove {
-                    start: [0, 7],
-                    end: [0, 5],
-                    ..Default::default()
-                }),
-                CastleTypes::WhiteQueen => result.make_move(GameMove {
-                    start: [0, 0],
-                    end: [0, 3],
-                    ..Default::default()
-                }),
-                CastleTypes::BlackKing => result.make_move(GameMove {
-                    start: [7, 7],
-                    end: [7, 5],
-                    ..Default::default()
-                }),
-                CastleTypes::BlackQueen => result.make_move(GameMove {
-                    start: [7, 0],
-                    end: [7, 3],
-                    ..Default::default()
-                }),
-            };
-        }
-        //Check if it was a passant move and remove the pawn accordingly
-        if let Some(passant_type) = mov.passant {
-            match passant_type {
-                PassantTypes::PassantAvailable(pos) => result.en_passant = Some(pos),
-                PassantTypes::PassantCapture([row, col]) => result.board[row][col] = Empty,
-            }
-        }
-        //Check if it was a promotion and replace the piece accordingly
-        if let Some(promotion) = mov.promote {
-            result.board[mov.end[0]][mov.end[1]] = promotion;
-        }
-        //Update the kings position
-        match piece {
-            King(BLACK) => result.black_king = mov.end,
-            King(WHITE) => result.white_king = mov.end,
-            _ => {}
-        }
-        //Update who is in check
-        result.check = is_in_check(&result);
-        //Update castling rights
-        match piece {
-            King(BLACK) => {
-                result.castling_rights[2] = false;
-                result.castling_rights[3] = false;
-            }
-            King(WHITE) => {
-                result.castling_rights[0] = false;
-                result.castling_rights[1] = false;
-            }
-            Rook(BLACK) => {
-                if mov.start == [7, 7] {
-                    result.castling_rights[2] = false;
-                } else if mov.start == [7, 0] {
-                    result.castling_rights[3] = false;
-                }
-            }
-            Rook(WHITE) => {
-                if mov.start == [0, 7] {
-                    result.castling_rights[0] = false;
-                } else if mov.start == [0, 0] {
-                    result.castling_rights[1] = false;
-                }
-            }
-            _ => {}
-        }
-        //Update half moves
-        if capture || Pawn(WHITE) == piece || Pawn(BLACK) == piece {
-            result.half_moves = 0;
-        } else {
-            result.half_moves += 1;
-        }
-        //Update full moves
-        if !result.curr_move {
-            result.full_moves += 1
-        }
-        result
-    }
-}
+impl GameState {}
 
 impl board::Board for GameState {
     fn read_from_fen(fen: String) -> Self {
@@ -222,7 +129,100 @@ impl board::Board for GameState {
     }
 
     fn make_move(&self, mov: GameMove) -> GameState {
-        self.test_move(mov)
+        //Expects mov to be a valid move
+        let mut result = *self;
+        let piece = self.board[mov.start[0]][mov.start[1]];
+        let capture = result.board[mov.end[0]][mov.end[1]] != Empty;
+
+        //Move the piece
+        result.board[mov.start[0]][mov.start[1]] = Empty;
+        result.board[mov.end[0]][mov.end[1]] = piece;
+
+        //Change player
+        result.curr_move = !result.curr_move;
+
+        //Check if it was a castle and move the corresponding rook accordingly
+        if let Some(castle_type) = mov.castle {
+            match castle_type {
+                CastleTypes::WhiteKing => result.make_move(GameMove {
+                    start: [0, 7],
+                    end: [0, 5],
+                    ..Default::default()
+                }),
+                CastleTypes::WhiteQueen => result.make_move(GameMove {
+                    start: [0, 0],
+                    end: [0, 3],
+                    ..Default::default()
+                }),
+                CastleTypes::BlackKing => result.make_move(GameMove {
+                    start: [7, 7],
+                    end: [7, 5],
+                    ..Default::default()
+                }),
+                CastleTypes::BlackQueen => result.make_move(GameMove {
+                    start: [7, 0],
+                    end: [7, 3],
+                    ..Default::default()
+                }),
+            };
+        }
+
+        //Check if it was a passant move and remove the pawn accordingly
+        if let Some(passant_type) = mov.passant {
+            match passant_type {
+                PassantTypes::PassantAvailable(pos) => result.en_passant = Some(pos),
+                PassantTypes::PassantCapture([row, col]) => result.board[row][col] = Empty,
+            }
+        }
+
+        //Check if it was a promotion and replace the piece accordingly
+        if let Some(promotion) = mov.promote {
+            result.board[mov.end[0]][mov.end[1]] = promotion;
+        }
+
+        //Update the kings position
+        match piece {
+            King(BLACK) => result.black_king = mov.end,
+            King(WHITE) => result.white_king = mov.end,
+            _ => {}
+        }
+
+        //Update who is in check
+        result.check = is_in_check(&result);
+
+        //Update castling rights
+        if result.board[0][4] != King(WHITE) {
+            result.castling_rights[0] = false;
+            result.castling_rights[1] = false;
+        }
+        if result.board[7][4] != King(BLACK) {
+            result.castling_rights[2] = false;
+            result.castling_rights[3] = false;
+        }
+        if result.board[0][0] != Rook(WHITE) {
+            result.castling_rights[1] = false;
+        }
+        if result.board[0][7] != Rook(WHITE) {
+            result.castling_rights[0] = false;
+        }
+        if result.board[7][0] != Rook(BLACK) {
+            result.castling_rights[3] = false;
+        }
+        if result.board[7][7] != Rook(BLACK) {
+            result.castling_rights[2] = false;
+        }
+
+        //Update half moves
+        if capture || Pawn(WHITE) == piece || Pawn(BLACK) == piece {
+            result.half_moves = 0;
+        } else {
+            result.half_moves += 1;
+        }
+        //Update full moves
+        if !result.curr_move {
+            result.full_moves += 1
+        }
+        result
     }
 
     fn get_check(&self) -> Option<bool> {
@@ -258,10 +258,10 @@ fn rook_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove
                 end: [row as usize, col as usize],
                 ..Default::default()
             };
-            if !player && !is_white_checked(&game.test_move(mov)) {
+            if !player && !is_white_checked(&game.make_move(mov)) {
                 moves.push(mov);
             }
-            if player && !is_black_checked(&game.test_move(mov)) {
+            if player && !is_black_checked(&game.make_move(mov)) {
                 moves.push(mov);
             }
             row += direction[0];
@@ -270,16 +270,16 @@ fn rook_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove
                 continue 'dir;
             }
         }
-        //Find which piece we've hit and add moves acccordingly
+        //Find which piece we've hit and add moves accordingly
         let mov = GameMove {
             start,
             end: [row as usize, col as usize],
             ..Default::default()
         };
-        if !player && is_white_checked(&game.test_move(mov)) {
+        if !player && is_white_checked(&game.make_move(mov)) {
             continue 'dir;
         }
-        if player && is_black_checked(&game.test_move(mov)) {
+        if player && is_black_checked(&game.make_move(mov)) {
             continue 'dir;
         }
         match game.board[row as usize][col as usize] {
@@ -348,7 +348,7 @@ fn knight_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMo
                             end: [row as usize, col as usize],
                             ..Default::default()
                         };
-                        if !is_white_checked(&game.test_move(mov)) {
+                        if !is_white_checked(&game.make_move(mov)) {
                             moves.push(mov);
                         }
                     }
@@ -364,7 +364,7 @@ fn knight_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMo
                             capture: true,
                             ..Default::default()
                         };
-                        if !is_black_checked(&game.test_move(mov)) {
+                        if !is_black_checked(&game.make_move(mov)) {
                             moves.push(mov);
                         }
                     }
@@ -377,10 +377,10 @@ fn knight_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMo
                         capture: true,
                         ..Default::default()
                     };
-                    if !player && !is_white_checked(&game.test_move(mov)) {
+                    if !player && !is_white_checked(&game.make_move(mov)) {
                         moves.push(mov);
                     }
-                    if player && !is_black_checked(&game.test_move(mov)) {
+                    if player && !is_black_checked(&game.make_move(mov)) {
                         moves.push(mov);
                     }
                 }
@@ -409,10 +409,10 @@ fn bishop_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMo
                 end: [row as usize, col as usize],
                 ..Default::default()
             };
-            if !player && !is_white_checked(&game.test_move(mov)) {
+            if !player && !is_white_checked(&game.make_move(mov)) {
                 moves.push(mov);
             }
-            if player && !is_black_checked(&game.test_move(mov)) {
+            if player && !is_black_checked(&game.make_move(mov)) {
                 moves.push(mov);
             }
             row += direction[0];
@@ -428,10 +428,10 @@ fn bishop_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMo
             capture: true,
             ..Default::default()
         };
-        if !player && is_white_checked(&game.test_move(mov)) {
+        if !player && is_white_checked(&game.make_move(mov)) {
             continue 'dir;
         }
-        if player && is_black_checked(&game.test_move(mov)) {
+        if player && is_black_checked(&game.make_move(mov)) {
             continue 'dir;
         }
         match game.board[row as usize][col as usize] {
@@ -500,7 +500,7 @@ fn king_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove
                         end: [row as usize, col as usize],
                         ..Default::default()
                     };
-                    if !is_white_checked(&game.test_move(mov)) {
+                    if !is_white_checked(&game.make_move(mov)) {
                         moves.push(mov);
                     }
                 }
@@ -515,7 +515,7 @@ fn king_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove
                         end: [row as usize, col as usize],
                         ..Default::default()
                     };
-                    if !is_black_checked(&game.test_move(mov)) {
+                    if !is_black_checked(&game.make_move(mov)) {
                         moves.push(mov);
                     }
                 }
@@ -527,10 +527,10 @@ fn king_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove
                     end: [row as usize, col as usize],
                     ..Default::default()
                 };
-                if !player && !is_white_checked(&game.test_move(mov)) {
+                if !player && !is_white_checked(&game.make_move(mov)) {
                     moves.push(mov);
                 }
-                if player && !is_black_checked(&game.test_move(mov)) {
+                if player && !is_black_checked(&game.make_move(mov)) {
                     moves.push(mov);
                 }
             }
@@ -555,8 +555,8 @@ fn king_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove
                     end: [0, 6],
                     ..Default::default()
                 };
-                if !is_white_checked(&game.test_move(mov1))
-                    && !is_white_checked(&game.test_move(mov2))
+                if !is_white_checked(&game.make_move(mov1))
+                    && !is_white_checked(&game.make_move(mov2))
                 {
                     moves.push(GameMove {
                         start,
@@ -582,8 +582,8 @@ fn king_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove
                     end: [0, 2],
                     ..Default::default()
                 };
-                if !is_white_checked(&game.test_move(mov1))
-                    && !is_white_checked(&game.test_move(mov2))
+                if !is_white_checked(&game.make_move(mov1))
+                    && !is_white_checked(&game.make_move(mov2))
                 {
                     moves.push(GameMove {
                         start,
@@ -608,8 +608,8 @@ fn king_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove
                     end: [7, 6],
                     ..Default::default()
                 };
-                if !is_black_checked(&game.test_move(mov1))
-                    && !is_black_checked(&game.test_move(mov2))
+                if !is_black_checked(&game.make_move(mov1))
+                    && !is_black_checked(&game.make_move(mov2))
                 {
                     moves.push(GameMove {
                         start,
@@ -635,8 +635,8 @@ fn king_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove
                     end: [7, 2],
                     ..Default::default()
                 };
-                if !is_black_checked(&game.test_move(mov1))
-                    && !is_black_checked(&game.test_move(mov2))
+                if !is_black_checked(&game.make_move(mov1))
+                    && !is_black_checked(&game.make_move(mov2))
                 {
                     moves.push(GameMove {
                         start,
@@ -673,7 +673,7 @@ fn pawn_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove
             end: [row as usize, col as usize],
             ..Default::default()
         };
-        if !check_function(&game.test_move(mov)) {
+        if !check_function(&game.make_move(mov)) {
             if row == [7, 0][player_int] {
                 moves.push(GameMove {
                     start,
@@ -721,7 +721,7 @@ fn pawn_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove
                 passant,
                 ..Default::default()
             };
-            if !check_function(&game.test_move(mov)) {
+            if !check_function(&game.make_move(mov)) {
                 moves.push(mov);
             }
         }
@@ -743,7 +743,7 @@ fn pawn_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove
             end: [row as usize, col as usize],
             ..Default::default()
         };
-        if passant_cap && !check_function(&game.test_move(mov)) {
+        if passant_cap && !check_function(&game.make_move(mov)) {
             //Passant captures cannot promote
             moves.push(GameMove {
                 start,
@@ -758,7 +758,7 @@ fn pawn_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove
             match game.board[row as usize][col as usize] {
                 Rook(player) | Queen(player) | Bishop(player) | King(player) | Knight(player)
                 | Pawn(player) => {
-                    if player != game.curr_move && !check_function(&game.test_move(mov)) {
+                    if player != game.curr_move && !check_function(&game.make_move(mov)) {
                         if row == [7, 0][player_int] {
                             moves.push(GameMove {
                                 start,
@@ -810,7 +810,7 @@ fn pawn_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove
             end: [row as usize, col as usize],
             ..Default::default()
         };
-        if passant_cap && !check_function(&game.test_move(mov)) {
+        if passant_cap && !check_function(&game.make_move(mov)) {
             //Passant captures cannot promote
             moves.push(GameMove {
                 start,
@@ -825,7 +825,7 @@ fn pawn_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove
             match game.board[row as usize][col as usize] {
                 Rook(player) | Queen(player) | Bishop(player) | King(player) | Knight(player)
                 | Pawn(player) => {
-                    if player != game.curr_move && !check_function(&game.test_move(mov)) {
+                    if player != game.curr_move && !check_function(&game.make_move(mov)) {
                         if row == [7, 0][player_int] {
                             moves.push(GameMove {
                                 start,

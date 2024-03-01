@@ -1,9 +1,10 @@
 #![allow(dead_code)]
-use crate::ai_funcs::ai_utils::heuristics::{heuristic, term};
+use crate::ai_funcs::ai_utils::heuristics::{heuristic, is_terminal};
 use std::collections::BinaryHeap;
 use std::time::Instant;
 use crate::board_structs::board::Board;
 use crate::utils::game_move::GameMove;
+use crate::utils::pieces::WHITE;
 
 pub struct ABMinimax {
 }
@@ -43,7 +44,7 @@ fn min_choice<T: crate::board_structs::board::Board>(game: T, depth: usize, avai
 }
 
 fn max_value<T: Board>(game: T, depth: usize, alpha: &i32, beta: &i32, available_moves: &Vec<GameMove>) -> i32 {
-    if let Some(winner) = term(&game, available_moves) {
+    if let Some(winner) = is_terminal(&game, available_moves) {
         return winner;
     }
     if depth == 0 {
@@ -64,7 +65,7 @@ fn max_value<T: Board>(game: T, depth: usize, alpha: &i32, beta: &i32, available
 }
 
 fn min_value<T: Board>(game: T, depth: usize, alpha: &i32, beta: &i32, available_moves: &Vec<GameMove>) -> i32 {
-    if let Some(winner) = term(&game, available_moves) {
+    if let Some(winner) = is_terminal(&game, available_moves) {
         return winner;
     }
     if depth == 0 {
@@ -91,7 +92,7 @@ fn id_minimax<T: Board>(game: T, max_player: bool, time_left: u128) -> GameMove 
     let mut depth: usize = 1;
     let mut done = false;
     let mut best_move;
-    let move_search = if max_player { max_choice } else { min_choice };
+    let move_search = if max_player == WHITE { max_choice } else { min_choice };
 
     best_move = move_search(game.clone(), depth, &game.get_valid_moves());
     depth += 1;
@@ -112,7 +113,6 @@ fn id_minimax<T: Board>(game: T, max_player: bool, time_left: u128) -> GameMove 
         if this_iter_time.elapsed().as_nanos() + time_predict > available_time {
             done = true;
         }
-        println!("Available Moves: {:?}", valid_moves);
         println!(
             "Depth {} | Took {} ns | Best Move: {} | {} times last depth | Predicting {} ns",
             depth,

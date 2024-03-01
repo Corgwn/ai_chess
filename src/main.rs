@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::time::Instant;
 use crate::ai_funcs::ai_types::abminimax::{ABMinimax};
+use crate::ai_funcs::ai_types::random::{Random};
 use crate::board_structs::board_types::array2d::GameState;
 use crate::board_structs::board::Board;
 use crate::utils::pieces::{BLACK, WHITE};
@@ -19,10 +20,11 @@ fn main() {
     }
     let file = BufReader::new(File::open(&args[1]).unwrap());
     let fen_string = file.lines().next().unwrap().unwrap();
-    let mut game: GameState = GameState::read_from_fen(fen_string);
 
+    //Change board type here
+    let mut game = GameState::read_from_fen(fen_string);
     let player1 = ABMinimax {};
-    let player2 = ABMinimax {};
+    let player2 = Random {};
 
     let mut turn_num: usize = 0;
     let mut time_left: u128 = 900000000000;

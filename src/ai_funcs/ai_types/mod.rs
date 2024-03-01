@@ -1,2 +1,2 @@
 pub mod abminimax;
-mod random;
+pub mod random;
