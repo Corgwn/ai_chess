@@ -8,7 +8,7 @@ use crate::utils::pieces::{Pieces, Pieces::*, BLACK, WHITE};
 
 /* Game state representation and member functions */
 #[derive(Clone, Debug, Copy)]
-pub struct GameState {
+pub struct Array2D {
     pub board: [[Pieces; 8]; 8],
     //False represents white, true represents black
     pub curr_move: bool,
@@ -23,9 +23,9 @@ pub struct GameState {
     black_king: [usize; 2],
 }
 
-impl GameState {}
+impl Array2D {}
 
-impl board::Board for GameState {
+impl board::Board for Array2D {
     fn read_from_fen(fen: String) -> Self {
         let mut fields = fen.split_ascii_whitespace();
         //Read board positions
@@ -91,7 +91,7 @@ impl board::Board for GameState {
             }
         }
 
-        let mut game = GameState {
+        let mut game = Array2D {
             board: board_state,
             curr_move: player,
             castling_rights: rights,
@@ -128,7 +128,7 @@ impl board::Board for GameState {
         moves
     }
 
-    fn make_move(&self, mov: GameMove) -> GameState {
+    fn make_move(&self, mov: GameMove) -> Array2D {
         //Expects mov to be a valid move
         let mut result = *self;
         let piece = self.board[mov.start[0]][mov.start[1]];
@@ -239,7 +239,7 @@ impl board::Board for GameState {
 }
 
 /* Supporting Functions */
-fn rook_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove> {
+fn rook_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> {
     let mut moves = Vec::new();
     if player != game.curr_move {
         return moves;
@@ -316,7 +316,7 @@ fn rook_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove
     moves
 }
 
-fn knight_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove> {
+fn knight_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> {
     let mut moves = Vec::new();
     if player != game.curr_move {
         return moves;
@@ -390,7 +390,7 @@ fn knight_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMo
     moves
 }
 
-fn bishop_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove> {
+fn bishop_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> {
     let mut moves = Vec::new();
     if player != game.curr_move {
         return moves;
@@ -457,7 +457,7 @@ fn bishop_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMo
     moves
 }
 
-fn queen_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove> {
+fn queen_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> {
     let mut moves = Vec::new();
     if player != game.curr_move {
         return moves;
@@ -467,7 +467,7 @@ fn queen_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMov
     moves
 }
 
-fn king_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove> {
+fn king_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> {
     let mut moves = Vec::new();
     if player != game.curr_move {
         return moves;
@@ -651,7 +651,7 @@ fn king_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove
     moves
 }
 
-fn pawn_moves(game: &GameState, start: [usize; 2], player: bool) -> Vec<GameMove> {
+fn pawn_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> {
     let mut moves = Vec::new();
     let forward = if player { -1 } else { 1 };
     let player_int = if player { 1 } else { 0 };
@@ -870,7 +870,7 @@ fn is_in_bounds(pos: [i32; 2]) -> bool {
     true
 }
 
-fn is_white_checked(game: &GameState) -> bool {
+fn is_white_checked(game: &Array2D) -> bool {
     //Orthogonal attacks
     'dir: for direction in [[0, 1], [0, -1], [1, 0], [-1, 0]] {
         let mut row = game.white_king[0] as i32 + direction[0];
@@ -886,7 +886,7 @@ fn is_white_checked(game: &GameState) -> bool {
             }
         }
         match game.board[row as usize][col as usize] {
-            Rook(BLACK) | Queen(BLACK) => return true,
+            Rook(BLACK) | Queen(BLACK) | King(BLACK) => return true,
             _ => {}
         }
     }
@@ -905,7 +905,7 @@ fn is_white_checked(game: &GameState) -> bool {
             }
         }
         match game.board[row as usize][col as usize] {
-            Bishop(BLACK) | Queen(BLACK) => return true,
+            Bishop(BLACK) | Queen(BLACK) | King(BLACK) => return true,
             Pawn(BLACK) => {
                 if row == game.white_king[0] as i32 + 1 {
                     return true;
@@ -951,7 +951,7 @@ fn is_white_checked(game: &GameState) -> bool {
     false
 }
 
-fn is_black_checked(game: &GameState) -> bool {
+fn is_black_checked(game: &Array2D) -> bool {
     //Orthogonal attacks
     'dir: for direction in [[0, 1], [0, -1], [1, 0], [-1, 0]] {
         let mut row = game.black_king[0] as i32 + direction[0];
@@ -1032,14 +1032,14 @@ fn is_black_checked(game: &GameState) -> bool {
     false
 }
 
-fn is_in_check(game: &GameState) -> Option<bool> {
+fn is_in_check(game: &Array2D) -> Option<bool> {
     //White King
     if is_white_checked(game) {
-        return Some(false);
+        return Some(WHITE);
     }
     //Black King
     if is_black_checked(game) {
-        return Some(true);
+        return Some(BLACK);
     }
     None
 }

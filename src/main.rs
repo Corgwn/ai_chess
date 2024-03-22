@@ -1,15 +1,15 @@
+use crate::ai_funcs::ai_types::abminimax::ABMinimax;
+use crate::ai_funcs::ai_types::random::Random;
+use crate::board_structs::board::Board;
+use crate::board_structs::board_types::array2d::Array2D;
+use crate::utils::pieces::{BLACK, WHITE};
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::time::Instant;
-use crate::ai_funcs::ai_types::abminimax::{ABMinimax};
-use crate::ai_funcs::ai_types::random::{Random};
-use crate::board_structs::board_types::array2d::GameState;
-use crate::board_structs::board::Board;
-use crate::utils::pieces::{BLACK, WHITE};
 
-pub mod board_structs;
 pub mod ai_funcs;
+pub mod board_structs;
 pub mod utils;
 
 fn main() {
@@ -22,15 +22,15 @@ fn main() {
     let fen_string = file.lines().next().unwrap().unwrap();
 
     //Change board type here
-    let mut game = GameState::read_from_fen(fen_string);
+    let mut game = Array2D::read_from_fen(fen_string);
     let player1 = ABMinimax {};
-    let player2 = Random {};
+    let player2 = ABMinimax {};
 
     let mut turn_num: usize = 0;
     let mut time_left: u128 = 900000000000;
-    while turn_num <= 60 && time_left > 0 && !game.get_valid_moves().is_empty() {
+    while time_left > 0 && !game.get_valid_moves().is_empty() {
         let start = Instant::now();
-        let turn: bool = (turn_num % 2) != 0 ;
+        let turn: bool = (turn_num % 2) != 0;
         let next_move = match turn {
             WHITE => player1.find_move(game, WHITE, time_left),
             BLACK => player2.find_move(game, BLACK, time_left),
@@ -41,12 +41,15 @@ fn main() {
             BLACK => "BLACK",
         };
 
-        time_left = match time_left.checked_sub(start.elapsed().as_nanos()){
-            None => {break},
-            Some(x) => {x},
+        time_left = match time_left.checked_sub(start.elapsed().as_nanos()) {
+            None => break,
+            Some(x) => x,
         };
         turn_num += 1;
         game = game.make_move(next_move);
-        println!("\nTurn number: {} | Player: {} | Move: {} | Time Left: {}\n", turn_num, turn_color, next_move, time_left);
+        println!(
+            "\nTurn number: {} | Player: {} | Move: {} | Time Left: {}\n",
+            turn_num, turn_color, next_move, time_left
+        );
     }
 }
