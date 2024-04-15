@@ -18,7 +18,7 @@ pub struct Mailbox {
 }
 
 impl Board for Mailbox {
-    fn read_from_fen(fen: String) -> Self {
+    fn setup_board(fen: Option<&str>) -> Self {
         todo!()
     }
 

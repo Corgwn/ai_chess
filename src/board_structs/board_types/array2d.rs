@@ -6,6 +6,8 @@ use crate::utils::game_move::GameMove;
 use crate::utils::game_move::{to_let, PassantTypes};
 use crate::utils::pieces::{Pieces, Pieces::*, BLACK, WHITE};
 
+const START_POSITION: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 /* Game state representation and member functions */
 #[derive(Clone, Debug, Copy)]
 pub struct Array2D {
@@ -26,8 +28,8 @@ pub struct Array2D {
 impl Array2D {}
 
 impl board::Board for Array2D {
-    fn read_from_fen(fen: String) -> Self {
-        let mut fields = fen.split_ascii_whitespace();
+    fn setup_board(fen: Option<&str>) -> Self {
+        let mut fields = fen.unwrap_or(START_POSITION).split_ascii_whitespace();
         //Read board positions
         let temp = fields.next().unwrap();
         let board = temp.split('/');

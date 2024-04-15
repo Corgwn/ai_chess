@@ -1,4 +1,5 @@
 use crate::utils::pieces::Pieces;
+use crate::utils::pieces::Pieces::{Bishop, Knight, Queen, Rook};
 use std::fmt;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -11,14 +12,56 @@ pub struct GameMove {
     pub capture: bool,
 }
 
+impl GameMove {
+    pub(crate) fn from_str(input: &&str) -> GameMove {
+        let chars: Vec<char> = input.chars().collect();
+        // Get start and end spaces
+        let start = [
+            to_num(chars[0]),
+            chars[1].to_digit(10).unwrap().checked_sub(1).unwrap() as usize,
+        ];
+        let end = [
+            to_num(chars[2]),
+            chars[3].to_digit(10).unwrap().checked_sub(1).unwrap() as usize,
+        ];
+        // Get promotion if needed
+        let promote = if input.len() == 5 {
+            match chars[4] {
+                'b' => Some(Bishop(chars[3] != '8')),
+                'k' => Some(Knight(chars[3] != '8')),
+                'r' => Some(Rook(chars[3] != '8')),
+                'q' => Some(Queen(chars[3] != '8')),
+                _ => None,
+            }
+        } else {
+            None
+        };
+        // Check for castle moves
+        let castle = match *input {
+            "e1g1" => Some(CastleTypes::WhiteKing),
+            "e1c1" => Some(CastleTypes::WhiteQueen),
+            "e8g8" => Some(CastleTypes::BlackKing),
+            "e8c8" => Some(CastleTypes::BlackQueen),
+            _ => None,
+        };
+
+        GameMove {
+            start,
+            end,
+            castle,
+            promote,
+            passant: None,
+            capture: false,
+        }
+    }
+}
+
 impl fmt::Display for GameMove {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let promotion;
-        if let Some(piece) = self.promote {
-            promotion = piece.to_string();
-        } else {
-            promotion = "".to_owned();
-        }
+        let promotion = match self.promote {
+            Some(piece) => piece.to_string(),
+            None => "".to_string(),
+        };
         write!(
             f,
             "{}{}{}{}{}",
