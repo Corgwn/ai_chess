@@ -32,6 +32,7 @@ impl ABMinimax {
         best_move = move_search(game, depth, &valid_moves);
         depth += 1;
 
+        eprintln!("Depth {} complete - Best Move: {}", depth, best_move);
         loop {
             // Check if stop command received during last loop
             match rx.try_recv() {
@@ -43,6 +44,8 @@ impl ABMinimax {
 
             best_move = move_search(&game, depth, &valid_moves);
             depth += 1;
+
+            eprintln!("Depth {} complete - Best Move: {}", depth, best_move);
         }
         best_move
     }
@@ -71,6 +74,7 @@ impl ABMinimax {
         depth += 1;
         let mut last_iter_time = Instant::now();
 
+        eprintln!("Depth {} complete - Best Move: {}", depth, best_move);
         while !out_of_time && depth <= max_depth {
             // Check if stop command received during last loop
             match rx.try_recv() {
@@ -93,6 +97,8 @@ impl ABMinimax {
             if this_iter_time.elapsed().as_millis() + time_predict > time_to_search {
                 out_of_time = true;
             }
+            
+            eprintln!("Depth {} complete - Best Move: {}", depth, best_move);
         }
         best_move
     }
