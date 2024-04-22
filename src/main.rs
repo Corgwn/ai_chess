@@ -6,7 +6,6 @@ use std::time::Instant;
 use std::{thread, time};
 
 use clap::Parser;
-use inquire::Text;
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -60,7 +59,8 @@ fn uci_engine() {
     // Ready UCI terminal, and start command input
     println!("uciok");
     loop {
-        let command_full = Text::new("").prompt().unwrap_or("".to_string());
+        let mut command_full = String::new();
+        std::io::stdin().read_line(&mut command_full).unwrap();
         let args: Vec<&str> = command_full.split(' ').collect();
         match args[0] {
             "isready" => println!("readyok"),
@@ -191,21 +191,19 @@ fn run_sample_game() {
 fn main() {
     // let args = Args::parse();
     loop {
-        let mode = Text::new("").prompt();
-        match mode {
-            Ok(name) => match name.as_str() {
-                "uci" => {
-                    uci_engine();
-                    break;
-                }
-                "test" => {
-                    run_sample_game();
-                    break;
-                }
-                "quit" => break,
-                _ => println!("Engine type not supported"),
-            },
-            Err(_) => println!("Must input a mode (or quit)"),
+        let mut mode = String::new();
+        std::io::stdin().read_line(&mut mode).unwrap();
+        match mode.as_str() {
+            "uci" => {
+                uci_engine();
+                break;
+            }
+            "test" => {
+                run_sample_game();
+                break;
+            }
+            "quit" => break,
+            _ => println!("Engine type not supported"),
         }
     }
 }
