@@ -97,7 +97,7 @@ impl ABMinimax {
             if this_iter_time.elapsed().as_millis() + time_predict > time_to_search {
                 out_of_time = true;
             }
-            
+
             eprintln!("Depth {} complete - Best Move: {}", depth, best_move);
         }
         best_move
