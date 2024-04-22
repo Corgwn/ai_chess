@@ -55,6 +55,7 @@ fn uci_engine() {
     // Build Engine structs
     let mut board = Array2D::setup_board(None);
     let mut engine_handle: Option<Engine> = None;
+    let mut move_count = 0;
 
     // Ready UCI terminal, and start command input
     println!("uciok");
@@ -68,12 +69,15 @@ fn uci_engine() {
             "register" => {}
             "ucinewgame" => {
                 board = Array2D::setup_board(None);
+                move_count = 0
             }
             "position" if args.contains(&"startpos") => {
                 board = Array2D::setup_board(None);
+                move_count = 0;
                 if args.contains(&"moves") {
                     for input_move in filter_uci_moves(&args) {
                         board = board.make_move(input_move);
+                        move_count += 1;
                     }
                 }
             }
@@ -82,6 +86,7 @@ fn uci_engine() {
                 if args.contains(&"moves") {
                     for input_move in filter_uci_moves(&args) {
                         board = board.make_move(input_move);
+                        move_count += 1;
                     }
                 }
             }
@@ -132,6 +137,53 @@ fn uci_engine() {
                 let (tx, rx) = mpsc::channel();
                 let handle = thread::spawn(move || {
                     let best_move = ABMinimax::uci_infinite_find_move(&board, rx, searchmoves);
+                    println!("bestmove {}", best_move)
+                });
+                engine_handle = Some(Engine {
+                    handle,
+                    transmit: tx,
+                });
+            }
+            "go" => {
+                // Find time to move
+                // Get time remaining
+                let mut time_to_move = if !board.curr_move {
+                    let move_time_index = args.iter().position(|&r| r == "wtime").unwrap();
+                    args[move_time_index + 1].parse().unwrap()
+                } else {
+                    let move_time_index = args.iter().position(|&r| r == "btime").unwrap();
+                    args[move_time_index + 1].parse().unwrap()
+                };
+                // Calculate time to search
+                if move_count < 30 {
+                    time_to_move /= 30 - move_count;
+                } else {
+                    time_to_move /= 10;
+                }
+
+                // Parse searchmoves
+                let searchmoves = if args.contains(&"searchmoves") {
+                    Some(filter_uci_moves(&args))
+                } else {
+                    None
+                };
+
+                // Parse max depth
+                let mut max_plies = None;
+                if let Some(depth_index) = args.iter().position(|&r| r == "depth") {
+                    max_plies = Some(args[depth_index + 1].parse().unwrap());
+                }
+
+                // Start engine and save thread handle to later join if needed
+                let (tx, rx) = mpsc::channel();
+                let handle = thread::spawn(move || {
+                    let best_move = ABMinimax::uci_timed_find_move(
+                        &board,
+                        time_to_move,
+                        rx,
+                        searchmoves,
+                        max_plies,
+                    );
                     println!("bestmove {}", best_move)
                 });
                 engine_handle = Some(Engine {
