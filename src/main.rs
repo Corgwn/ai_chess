@@ -61,7 +61,7 @@ fn uci_engine() {
     loop {
         let mut command_full = String::new();
         std::io::stdin().read_line(&mut command_full).unwrap();
-        let args: Vec<&str> = command_full.split(' ').collect();
+        let args: Vec<&str> = command_full.trim().split(' ').collect();
         match args[0] {
             "isready" => println!("readyok"),
             "setoption" => {}
@@ -193,7 +193,7 @@ fn main() {
     loop {
         let mut mode = String::new();
         std::io::stdin().read_line(&mut mode).unwrap();
-        match mode.as_str() {
+        match mode.trim() {
             "uci" => {
                 uci_engine();
                 break;
