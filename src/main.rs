@@ -63,6 +63,7 @@ fn uci_engine() {
         let mut command_full = String::new();
         std::io::stdin().read_line(&mut command_full).unwrap();
         let args: Vec<&str> = command_full.trim().split(' ').collect();
+        println!("{:?}", args);
         match args[0] {
             "isready" => println!("readyok"),
             "setoption" => {}
@@ -75,7 +76,9 @@ fn uci_engine() {
                 board = Array2D::setup_board(None);
                 move_count = 0;
                 if args.contains(&"moves") {
-                    for input_move in filter_uci_moves(&args) {
+                    let x = filter_uci_moves(&args);
+                    //println!("Filtered Moves: {:?}", x);
+                    for input_move in x {
                         board = board.make_move(input_move);
                         move_count += 1;
                     }
@@ -174,6 +177,7 @@ fn uci_engine() {
                     max_plies = Some(args[depth_index + 1].parse().unwrap());
                 }
 
+                println!("UI Valid Moves: {:?}", board.get_valid_moves());
                 // Start engine and save thread handle to later join if needed
                 let (tx, rx) = mpsc::channel();
                 let handle = thread::spawn(move || {

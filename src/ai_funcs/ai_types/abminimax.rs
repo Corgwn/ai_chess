@@ -68,6 +68,9 @@ impl ABMinimax {
             min_choice
         };
         let valid_moves = start_moves.unwrap_or(game.get_valid_moves());
+
+        println!("Engine Valid Moves: {:?}", valid_moves);
+
         let max_depth = max_plies.unwrap_or(usize::MAX);
 
         best_move = move_search(game, depth, &valid_moves);

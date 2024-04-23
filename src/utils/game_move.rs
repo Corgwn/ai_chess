@@ -2,7 +2,7 @@ use crate::utils::pieces::Pieces;
 use crate::utils::pieces::Pieces::{Bishop, Knight, Queen, Rook};
 use std::fmt;
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Default, Eq, PartialEq)]
 pub struct GameMove {
     pub start: [usize; 2],
     pub end: [usize; 2],
@@ -14,16 +14,19 @@ pub struct GameMove {
 
 impl GameMove {
     pub(crate) fn from_str(input: &&str) -> GameMove {
+        //println!("Converting str to move");
         let chars: Vec<char> = input.chars().collect();
+        //println!("Chars: {:?}", chars);
         // Get start and end spaces
         let start = [
-            to_num(chars[0]),
             chars[1].to_digit(10).unwrap().checked_sub(1).unwrap() as usize,
+            to_num(chars[0]),
         ];
         let end = [
-            to_num(chars[2]),
             chars[3].to_digit(10).unwrap().checked_sub(1).unwrap() as usize,
+            to_num(chars[2]),
         ];
+        //println!("Start: {:?} End: {:?}", start, end);
         // Get promotion if needed
         let promote = if input.len() == 5 {
             match chars[4] {
@@ -36,6 +39,7 @@ impl GameMove {
         } else {
             None
         };
+        //println!("Promotion: {:?}", promote);
         // Check for castle moves
         let castle = match *input {
             "e1g1" => Some(CastleTypes::WhiteKing),
@@ -44,6 +48,7 @@ impl GameMove {
             "e8c8" => Some(CastleTypes::BlackQueen),
             _ => None,
         };
+        //println!("Castle: {:?}", castle);
 
         GameMove {
             start,
@@ -71,6 +76,12 @@ impl fmt::Display for GameMove {
             self.end[0] + 1,
             promotion
         )
+    }
+}
+
+impl fmt::Debug for GameMove {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.to_string())
     }
 }
 
@@ -162,5 +173,26 @@ pub(crate) fn to_num(letter: char) -> usize {
         'g' => 6,
         'h' => 7,
         _ => panic!(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+
+    #[test]
+    fn test_str_to_game_move() {
+        assert_eq!(
+            GameMove::from_str(&"e2e4"),
+            GameMove {
+                start: [1, 4],
+                end: [3, 4],
+                castle: None,
+                promote: None,
+                passant: None,
+                capture: false,
+            }
+        );
     }
 }
