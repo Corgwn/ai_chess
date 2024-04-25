@@ -18,6 +18,7 @@ impl ABMinimax {
         rx: Receiver<&str>,
         start_moves: Option<Vec<GameMove>>,
     ) -> GameMove {
+        let start_time = Instant::now();
         let max_player = game.get_curr_player();
 
         let mut depth: usize = 1;
@@ -32,7 +33,6 @@ impl ABMinimax {
         best_move = move_search(game, depth, &valid_moves);
         depth += 1;
 
-        println!("Depth {} complete - Best Move: {}", depth, best_move);
         loop {
             // Check if stop command received during last loop
             match rx.try_recv() {
@@ -45,7 +45,12 @@ impl ABMinimax {
             best_move = move_search(&game, depth, &valid_moves);
             depth += 1;
 
-            println!("Depth {} complete - Best Move: {}", depth, best_move);
+            println!(
+                "info depth {} pv {} time {}",
+                depth,
+                best_move,
+                start_time.elapsed().as_millis()
+            );
         }
         best_move
     }
@@ -57,6 +62,7 @@ impl ABMinimax {
         max_plies: Option<usize>,
     ) -> GameMove {
         let mut second_iter_time = Instant::now();
+        let start_time = Instant::now();
         let max_player = game.get_curr_player();
 
         let mut depth: usize = 1;
@@ -69,7 +75,7 @@ impl ABMinimax {
         };
         let valid_moves = start_moves.unwrap_or(game.get_valid_moves());
 
-        println!("Engine Valid Moves: {:?}", valid_moves);
+        // println!("Engine Valid Moves: {:?}", valid_moves);
 
         let max_depth = max_plies.unwrap_or(usize::MAX);
 
@@ -77,7 +83,7 @@ impl ABMinimax {
         depth += 1;
         let mut last_iter_time = Instant::now();
 
-        println!("Depth {} complete - Best Move: {}", depth, best_move);
+        // println!("Depth {} complete - Best Move: {}", depth, best_move);
         while !out_of_time && depth <= max_depth {
             // Check if stop command received during last loop
             match rx.try_recv() {
@@ -101,7 +107,12 @@ impl ABMinimax {
                 out_of_time = true;
             }
 
-            println!("Depth {} complete - Best Move: {}", depth, best_move);
+            println!(
+                "info depth {} pv {} time {}",
+                depth,
+                best_move,
+                start_time.elapsed().as_millis()
+            );
         }
         best_move
     }
