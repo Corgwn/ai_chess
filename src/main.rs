@@ -1,11 +1,9 @@
-use std::ops::Index;
 use std::sync::mpsc;
-use std::sync::mpsc::{Sender, TryRecvError};
-use std::thread::{sleep, JoinHandle};
+use std::sync::mpsc::Sender;
+use std::thread;
+use std::thread::JoinHandle;
 use std::time::Instant;
-use std::{thread, time};
 
-use clap::Parser;
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -19,25 +17,12 @@ pub mod ai_funcs;
 pub mod board_structs;
 pub mod utils;
 
-/// UCI chess engine written in Rust and featuring large amounts of custom options for what AI features to have, board representation to use, etc.
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
-    // /// Name of board representation to use.
-    // #[arg(short, long)]
-    // board_type: Option<String>,
-    //
-    // /// AI Type to use
-    // #[arg(short, long)]
-    // ai_type: Option<String>,
-}
-
 struct Engine {
     handle: JoinHandle<()>,
     transmit: Sender<&'static str>,
 }
 
-fn filter_uci_moves(args: &Vec<&str>) -> Vec<GameMove> {
+fn filter_uci_moves(args: &[&str]) -> Vec<GameMove> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"[abcdefgh]\d[abcdefgh]\d[qrkb]?").unwrap();
     }
