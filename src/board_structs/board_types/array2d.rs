@@ -238,6 +238,10 @@ impl board::Board for Array2D {
     fn get_board_as_2d(&self) -> [[Pieces; 8]; 8] {
         self.board
     }
+
+    fn get_castle_rights(&self) -> [bool; 4] {
+        self.castling_rights
+    }
 }
 
 /* Supporting Functions */

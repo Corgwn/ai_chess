@@ -1,10 +1,9 @@
-use rand::prelude::SliceRandom;
-use rand::thread_rng;
 use crate::board_structs::board::Board;
 use crate::utils::game_move::GameMove;
+use rand::prelude::SliceRandom;
+use rand::thread_rng;
 
-pub(crate) struct Random {
-}
+pub(crate) struct Random {}
 
 impl Random {
     pub fn find_move<T: Board>(&self, game: T, _: bool, _: u128) -> GameMove {
@@ -12,4 +11,3 @@ impl Random {
         *valid_moves.choose(&mut thread_rng()).unwrap()
     }
 }
-

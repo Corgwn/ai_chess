@@ -1,2 +1,2 @@
-pub mod board_types;
 pub mod board;
+pub mod board_types;

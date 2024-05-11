@@ -45,6 +45,10 @@ impl Board for Mailbox {
     fn get_board_as_2d(&self) -> [[Pieces; 8]; 8] {
         todo!()
     }
+
+    fn get_castle_rights(&self) -> [bool; 4] {
+        todo!()
+    }
 }
 
 fn generate_piece_moves(game: &Mailbox, pos: usize) -> Vec<GameMove> {

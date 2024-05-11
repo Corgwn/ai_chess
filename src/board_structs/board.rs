@@ -8,4 +8,5 @@ pub trait Board: Clone {
     fn get_check(&self) -> Option<bool>;
     fn get_curr_player(&self) -> bool;
     fn get_board_as_2d(&self) -> [[Pieces; 8]; 8];
+    fn get_castle_rights(&self) -> [bool; 4];
 }
