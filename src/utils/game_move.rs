@@ -1,6 +1,7 @@
-use crate::utils::pieces::Pieces;
-use crate::utils::pieces::Pieces::{Bishop, Knight, Queen, Rook};
+use crate::utils::pieces::{Pieces, PieceColors};
 use std::fmt;
+use crate::utils::pieces::PieceColors::{Black, White};
+use crate::utils::pieces::PieceTypes::{Bishop, Knight, Queen, Rook};
 
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
 pub struct GameMove {
@@ -29,11 +30,12 @@ impl GameMove {
         //println!("Start: {:?} End: {:?}", start, end);
         // Get promotion if needed
         let promote = if input.len() == 5 {
+            let color: PieceColors = if chars[3] == '8' { White } else { Black };
             match chars[4] {
-                'b' => Some(Bishop(chars[3] != '8')),
-                'k' => Some(Knight(chars[3] != '8')),
-                'r' => Some(Rook(chars[3] != '8')),
-                'q' => Some(Queen(chars[3] != '8')),
+                'b' => Some(Pieces { piece_type: Bishop, color}),
+                'k' => Some(Pieces { piece_type: Knight, color}),
+                'r' => Some(Pieces { piece_type: Rook, color}),
+                'q' => Some(Pieces { piece_type: Queen, color}),
                 _ => None,
             }
         } else {
@@ -90,9 +92,9 @@ impl Ord for GameMove {
         let mut mov1_score = 0;
         let mut mov2_score = 0;
         //Find self's score
-        //if let(check) = self.check {
+        // if let(check) = self.check {
         //  mov1_score += 1;
-        //}
+        // }
         if self.castle.is_some() {
             mov1_score += 2;
         }

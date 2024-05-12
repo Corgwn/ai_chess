@@ -1,6 +1,6 @@
 use crate::board_structs::board::Board;
 use crate::utils::game_move::GameMove;
-use crate::utils::pieces::{Pieces, Pieces::*, BLACK, WHITE};
+use crate::utils::pieces::{Pieces, BLACK, WHITE};
 
 #[derive(Copy, Clone)]
 pub struct Mailbox {
@@ -30,7 +30,7 @@ impl Board for Mailbox {
         result
     }
 
-    fn make_move(&self, mov: GameMove) -> Self {
+    fn make_move(&self, mov: &GameMove) -> Self {
         todo!()
     }
 
@@ -52,13 +52,5 @@ impl Board for Mailbox {
 }
 
 fn generate_piece_moves(game: &Mailbox, pos: usize) -> Vec<GameMove> {
-    let result = vec![];
-    let piece_type = game.board[pos];
-
-    match piece_type {
-        Rook(x) | Queen(x) | Bishop(x) => if x == game.curr_player {},
-        _ => {}
-    }
-
-    result
+   todo!()
 }

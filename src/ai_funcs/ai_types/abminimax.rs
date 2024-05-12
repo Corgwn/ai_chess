@@ -124,7 +124,7 @@ fn max_choice<T: Board>(game: &T, depth: usize, available_moves: &Vec<GameMove>)
     let moves = BinaryHeap::from_iter(available_moves.iter());
     for action in moves {
         let minimax_value = min_value(
-            game.clone().make_move(*action),
+            game.clone().make_move(action),
             depth,
             &i32::MIN,
             &i32::MAX,
@@ -144,7 +144,7 @@ fn min_choice<T: Board>(game: &T, depth: usize, available_moves: &Vec<GameMove>)
     let moves = BinaryHeap::from_iter(available_moves.iter());
     for action in moves {
         let minimax_value = max_value(
-            game.clone().make_move(*action),
+            game.clone().make_move(action),
             depth,
             &i32::MIN,
             &i32::MAX,
@@ -176,7 +176,7 @@ fn max_value<T: Board>(
     let moves = BinaryHeap::from_iter(available_moves.iter());
     for action in moves {
         let action_val = min_value(
-            game.clone().make_move(*action),
+            game.clone().make_move(action),
             depth - 1,
             &alpha,
             beta,
@@ -209,7 +209,7 @@ fn min_value<T: Board>(
     let moves = BinaryHeap::from_iter(available_moves.iter());
     for action in moves {
         let action_val = max_value(
-            game.clone().make_move(*action),
+            game.clone().make_move(action),
             depth - 1,
             alpha,
             &beta,

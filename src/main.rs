@@ -64,7 +64,7 @@ fn uci_engine() {
                     let x = filter_uci_moves(&args);
                     //println!("Filtered Moves: {:?}", x);
                     for input_move in x {
-                        board = board.make_move(input_move);
+                        board = board.make_move(&input_move);
                         move_count += 1;
                     }
                 }
@@ -73,7 +73,7 @@ fn uci_engine() {
                 board = Array2D::setup_board(Some(args[2]));
                 if args.contains(&"moves") {
                     for input_move in filter_uci_moves(&args) {
-                        board = board.make_move(input_move);
+                        board = board.make_move(&input_move);
                         move_count += 1;
                     }
                 }
@@ -221,7 +221,7 @@ fn run_sample_game() {
             Some(x) => x,
         };
         turn_num += 1;
-        game = game.make_move(next_move);
+        game = game.make_move(&next_move);
         println!(
             "\nTurn number: {} | Player: {} | Move: {} | Time Left: {}\n",
             turn_num, turn_color, next_move, time_left
