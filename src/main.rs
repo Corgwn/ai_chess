@@ -4,8 +4,10 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time::Instant;
 
+use ai_funcs::ai_types::manual::Manual;
 use lazy_static::lazy_static;
 use regex::Regex;
+use utils::pieces::Pieces;
 
 use crate::ai_funcs::ai_types::abminimax::ABMinimax;
 use crate::board_structs::board::Board;
@@ -198,17 +200,15 @@ fn uci_engine() {
 
 fn run_sample_game() {
     let mut game = Array2D::setup_board(None);
-    let player1 = ABMinimax {};
+    let player1 = Manual {};
     let player2 = ABMinimax {};
 
     let mut turn_num: usize = 0;
-    let mut time_left: u128 = 900000000000;
     while !game.get_valid_moves().is_empty() {
-        let start = Instant::now();
         let turn: bool = (turn_num % 2) != 0;
         let next_move = match turn {
-            WHITE => player1.find_move(game, WHITE, time_left),
-            BLACK => player2.find_move(game, BLACK, time_left),
+            WHITE => player1.find_move(game, WHITE, 30000000000),
+            BLACK => player2.find_move(game, BLACK, 30000000000),
         };
 
         let turn_color = match turn {
@@ -216,16 +216,13 @@ fn run_sample_game() {
             BLACK => "BLACK",
         };
 
-        time_left = match time_left.checked_sub(start.elapsed().as_nanos()) {
-            None => break,
-            Some(x) => x,
-        };
         turn_num += 1;
         game = game.make_move(&next_move);
         println!(
-            "\nTurn number: {} | Player: {} | Move: {} | Time Left: {}\n",
-            turn_num, turn_color, next_move, time_left
+            "\nTurn number: {} | Player: {} | Move: {}\n",
+            turn_num, turn_color, next_move
         );
+        print_board(&game);        
     }
 }
 
@@ -239,12 +236,24 @@ fn main() {
                 uci_engine();
                 break;
             }
-            "test" => {
+            "man" => {
                 run_sample_game();
                 break;
             }
             "quit" => break,
             _ => println!("Engine type not supported"),
         }
+    }
+}
+
+fn print_board<T: Board>(game: &T) {
+    let board = game.get_board_as_2d();
+    println!("-----------------");
+    for row in board.iter().rev() {
+        print!("|");
+        for col in row {
+            print!("{}|", col);
+        }
+        println!("\n-----------------");
     }
 }

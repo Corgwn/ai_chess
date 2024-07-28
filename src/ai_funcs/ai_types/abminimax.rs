@@ -13,6 +13,7 @@ impl ABMinimax {
     pub fn find_move<T: Board>(&self, game: T, max_player: bool, time_left: u128) -> GameMove {
         id_minimax(game, max_player, time_left)
     }
+
     pub fn uci_infinite_find_move<T: Board>(
         game: &T,
         rx: Receiver<&str>,
@@ -54,6 +55,7 @@ impl ABMinimax {
         }
         best_move
     }
+    
     pub fn uci_timed_find_move<T: Board>(
         game: &T,
         time_to_search: u128,
