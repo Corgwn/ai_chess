@@ -1,2 +1,3 @@
-pub mod array1d;
+pub mod mailbox;
 pub mod array2d;
+pub mod bitboard;

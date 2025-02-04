@@ -2,17 +2,14 @@ use std::sync::mpsc;
 use std::sync::mpsc::Sender;
 use std::thread;
 use std::thread::JoinHandle;
-use std::time::Instant;
 
-use ai_funcs::ai_types::manual::Manual;
+use ai_funcs::ai_types::abminimax::ABMinimax;
 use lazy_static::lazy_static;
 use regex::Regex;
-use utils::pieces::Pieces;
+use utils::gamemove2d::GameMove2d;
 
-use crate::ai_funcs::ai_types::abminimax::ABMinimax;
 use crate::board_structs::board::Board;
 use crate::board_structs::board_types::array2d::Array2D;
-use crate::utils::game_move::GameMove;
 use crate::utils::pieces::{BLACK, WHITE};
 
 pub mod ai_funcs;
@@ -24,13 +21,13 @@ struct Engine {
     transmit: Sender<&'static str>,
 }
 
-fn filter_uci_moves(args: &[&str]) -> Vec<GameMove> {
+fn filter_uci_moves(args: &[&str]) -> Vec<GameMove2d> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"[abcdefgh]\d[abcdefgh]\d[qrkb]?").unwrap();
     }
     args.iter()
         .filter(|x| RE.is_match(x))
-        .map(GameMove::from_str)
+        .map(GameMove2d::from_str)
         .collect()
 }
 
@@ -50,7 +47,6 @@ fn uci_engine() {
         let mut command_full = String::new();
         std::io::stdin().read_line(&mut command_full).unwrap();
         let args: Vec<&str> = command_full.trim().split(' ').collect();
-        //println!("{:?}", args);
         match args[0] {
             "isready" => println!("readyok"),
             "setoption" => {}
@@ -64,7 +60,6 @@ fn uci_engine() {
                 move_count = 0;
                 if args.contains(&"moves") {
                     let x = filter_uci_moves(&args);
-                    //println!("Filtered Moves: {:?}", x);
                     for input_move in x {
                         board = board.make_move(&input_move);
                         move_count += 1;
@@ -164,7 +159,6 @@ fn uci_engine() {
                     max_plies = Some(args[depth_index + 1].parse().unwrap());
                 }
 
-                println!("UI Valid Moves: {:?}", board.get_valid_moves());
                 // Start engine and save thread handle to later join if needed
                 let (tx, rx) = mpsc::channel();
                 let handle = thread::spawn(move || {
@@ -200,7 +194,7 @@ fn uci_engine() {
 
 fn run_sample_game() {
     let mut game = Array2D::setup_board(None);
-    let player1 = Manual {};
+    let player1 = ABMinimax {};
     let player2 = ABMinimax {};
 
     let mut turn_num: usize = 0;

@@ -1,11 +1,11 @@
 use crate::utils::pieces::{Pieces, PieceColors::*, PieceTypes::*, BLACK, WHITE, PieceTypes};
 
-use crate::utils::game_move::GameMove;
+use crate::utils::gamemove2d::GameMove2d;
 use std::collections::HashMap;
 
 pub fn is_terminal<T: crate::board_structs::board::Board>(
     game: &T,
-    available_moves: &Vec<GameMove>,
+    available_moves: &Vec<GameMove2d>,
 ) -> Option<i32> {
     if available_moves.is_empty() {
         if game.get_check().is_some() {
@@ -229,6 +229,7 @@ pub fn heuristic<T: crate::board_structs::board::Board>(game: T) -> i32 {
     // Add material value to evaluation
     for (piece, number) in piece_counts.iter() {
         match piece {
+            Pieces { piece_type: PieceTypes::Null, .. } => {}
             Pieces { piece_type: PieceTypes::Empty, .. } => {}
             Pieces { piece_type: Queen, .. } => result += [QUEEN_VAL, -QUEEN_VAL][piece.get_color() as usize] * number,
             Pieces { piece_type: Rook, .. } => result += [ROOK_VAL, -ROOK_VAL][piece.get_color() as usize] * number,

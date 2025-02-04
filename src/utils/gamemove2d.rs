@@ -4,7 +4,7 @@ use crate::utils::pieces::PieceColors::{Black, White};
 use crate::utils::pieces::PieceTypes::{Bishop, Knight, Queen, Rook};
 
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
-pub struct GameMove {
+pub struct GameMove2d {
     pub start: [usize; 2],
     pub end: [usize; 2],
     pub castle: Option<CastleTypes>,
@@ -13,8 +13,8 @@ pub struct GameMove {
     pub capture: bool,
 }
 
-impl GameMove {
-    pub(crate) fn from_str(input: &&str) -> GameMove {
+impl GameMove2d {
+    pub(crate) fn from_str(input: &&str) -> GameMove2d {
         //println!("Converting str to move");
         let chars: Vec<char> = input.chars().collect();
         //println!("Chars: {:?}", chars);
@@ -52,7 +52,7 @@ impl GameMove {
         };
         //println!("Castle: {:?}", castle);
 
-        GameMove {
+        GameMove2d {
             start,
             end,
             castle,
@@ -63,7 +63,7 @@ impl GameMove {
     }
 }
 
-impl fmt::Display for GameMove {
+impl fmt::Display for GameMove2d {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let promotion = match self.promote {
             Some(piece) => piece.to_string(),
@@ -81,13 +81,13 @@ impl fmt::Display for GameMove {
     }
 }
 
-impl fmt::Debug for GameMove {
+impl fmt::Debug for GameMove2d {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_string())
     }
 }
 
-impl Ord for GameMove {
+impl Ord for GameMove2d {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         let mut mov1_score = 0;
         let mut mov2_score = 0;
@@ -130,7 +130,7 @@ impl Ord for GameMove {
     }
 }
 
-impl PartialOrd for GameMove {
+impl PartialOrd for GameMove2d {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
@@ -186,8 +186,8 @@ mod tests {
     #[test]
     fn test_str_to_game_move() {
         assert_eq!(
-            GameMove::from_str(&"e2e4"),
-            GameMove {
+            GameMove2d::from_str(&"e2e4"),
+            GameMove2d {
                 start: [1, 4],
                 end: [3, 4],
                 castle: None,

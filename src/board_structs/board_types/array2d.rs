@@ -1,10 +1,11 @@
 use std::cmp::PartialEq;
 use crate::board_structs::board;
 use crate::board_structs::board::Board;
-use crate::utils::game_move::to_num;
-use crate::utils::game_move::CastleTypes;
-use crate::utils::game_move::GameMove;
-use crate::utils::game_move::{to_let, PassantTypes};
+use crate::utils::gamemove2d::to_let;
+use crate::utils::gamemove2d::to_num;
+use crate::utils::gamemove2d::CastleTypes;
+use crate::utils::gamemove2d::GameMove2d;
+use crate::utils::gamemove2d::PassantTypes;
 use crate::utils::pieces::{Pieces, BLACK, WHITE, PieceTypes::*, PieceColors::*, PieceTypes, PieceColors};
 
 const START_POSITION: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -221,13 +222,14 @@ impl board::Board for Array2D {
         game
     }
 
-    fn get_valid_moves(&self) -> Vec<GameMove> {
+    fn get_valid_moves(&self) -> Vec<GameMove2d> {
         let mut moves = Vec::new();
 
         for i in 0..8 {
             for j in 0..8 {
                 let piece = self.board[i][j];
                 match piece {
+                    Pieces { piece_type: PieceTypes::Null, .. } => continue,
                     Pieces { piece_type: PieceTypes::Empty, .. } => continue,
                     Pieces { piece_type: Rook, .. } => moves.append(&mut find_moves(self, [i, j], piece.get_color(), ROOK_OFFSETS.to_vec(), true)),
                     Pieces { piece_type: Knight, .. } => moves.append(&mut find_moves(self, [i, j], piece.get_color(), KNIGHT_OFFSETS.to_vec(), false)),
@@ -241,7 +243,7 @@ impl board::Board for Array2D {
         moves
     }
 
-    fn make_move(&self, mov: &GameMove) -> Array2D {
+    fn make_move(&self, mov: &GameMove2d) -> Array2D {
         //Expects mov to be a valid move
         let mut result = *self;
         let piece = self.board[mov.start[0]][mov.start[1]];
@@ -360,7 +362,7 @@ impl board::Board for Array2D {
 }
 
 /* Supporting Functions */
-fn find_moves(game: &Array2D, start: [usize; 2], player: bool, offsets: Vec<[i32; 2]>, ray: bool) -> Vec<GameMove> {
+fn find_moves(game: &Array2D, start: [usize; 2], player: bool, offsets: Vec<[i32; 2]>, ray: bool) -> Vec<GameMove2d> {
     let mut moves = Vec::new();
     if player != game.curr_move {
         return moves;
@@ -373,7 +375,7 @@ fn find_moves(game: &Array2D, start: [usize; 2], player: bool, offsets: Vec<[i32
             if !is_in_bounds([row, col]) {
                 continue 'dir;
             }
-            let mov = GameMove {
+            let mov = GameMove2d {
                 start,
                 end: [row as usize, col as usize],
                 ..Default::default()
@@ -382,7 +384,7 @@ fn find_moves(game: &Array2D, start: [usize; 2], player: bool, offsets: Vec<[i32
                 match game.board[row as usize][col as usize] {
                     Pieces { color: Black, .. } => {
                         if !player {
-                            moves.push(GameMove {
+                            moves.push(GameMove2d {
                                 start,
                                 end: [row as usize, col as usize],
                                 capture: true,
@@ -392,7 +394,7 @@ fn find_moves(game: &Array2D, start: [usize; 2], player: bool, offsets: Vec<[i32
                     }
                     Pieces { color: White, .. } => {
                         if player {
-                            moves.push(GameMove {
+                            moves.push(GameMove2d {
                                 start,
                                 end: [row as usize, col as usize],
                                 capture: true,
@@ -419,7 +421,7 @@ fn find_moves(game: &Array2D, start: [usize; 2], player: bool, offsets: Vec<[i32
     }
 }
 
-fn king_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> {
+fn king_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove2d> {
     let mut moves = Vec::new();
     if player != game.curr_move {
         return moves;
@@ -436,12 +438,12 @@ fn king_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> 
         WHITE => {
             //King side Castle
             if game.castling_rights[0] && game.board[0][5].piece_type == PieceTypes::Empty && game.board[0][6].piece_type == PieceTypes::Empty {
-                let mov1 = GameMove {
+                let mov1 = GameMove2d {
                     start,
                     end: [0, 5],
                     ..Default::default()
                 };
-                let mov2 = GameMove {
+                let mov2 = GameMove2d {
                     start,
                     end: [0, 6],
                     ..Default::default()
@@ -449,7 +451,7 @@ fn king_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> 
                 if !is_white_checked(&game.make_move(&mov1))
                     && !is_white_checked(&game.make_move(&mov2))
                 {
-                    moves.push(GameMove {
+                    moves.push(GameMove2d {
                         start,
                         end: [0, 6],
                         castle: Some(CastleTypes::WhiteKing),
@@ -463,12 +465,12 @@ fn king_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> 
                 && game.board[0][2].piece_type == PieceTypes::Empty
                 && game.board[0][3].piece_type == PieceTypes::Empty
             {
-                let mov1 = GameMove {
+                let mov1 = GameMove2d {
                     start,
                     end: [0, 3],
                     ..Default::default()
                 };
-                let mov2 = GameMove {
+                let mov2 = GameMove2d {
                     start,
                     end: [0, 2],
                     ..Default::default()
@@ -476,7 +478,7 @@ fn king_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> 
                 if !is_white_checked(&game.make_move(&mov1))
                     && !is_white_checked(&game.make_move(&mov2))
                 {
-                    moves.push(GameMove {
+                    moves.push(GameMove2d {
                         start,
                         end: [0, 2],
                         castle: Some(CastleTypes::WhiteQueen),
@@ -489,12 +491,12 @@ fn king_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> 
         BLACK => {
             //King side Castle
             if game.castling_rights[2] && game.board[7][5].piece_type == PieceTypes::Empty && game.board[7][6].piece_type == PieceTypes::Empty {
-                let mov1 = GameMove {
+                let mov1 = GameMove2d {
                     start,
                     end: [7, 5],
                     ..Default::default()
                 };
-                let mov2 = GameMove {
+                let mov2 = GameMove2d {
                     start,
                     end: [7, 6],
                     ..Default::default()
@@ -502,7 +504,7 @@ fn king_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> 
                 if !is_black_checked(&game.make_move(&mov1))
                     && !is_black_checked(&game.make_move(&mov2))
                 {
-                    moves.push(GameMove {
+                    moves.push(GameMove2d {
                         start,
                         end: [7, 6],
                         castle: Some(CastleTypes::BlackKing),
@@ -516,12 +518,12 @@ fn king_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> 
                 && game.board[7][2].piece_type == PieceTypes::Empty
                 && game.board[7][3].piece_type == PieceTypes::Empty
             {
-                let mov1 = GameMove {
+                let mov1 = GameMove2d {
                     start,
                     end: [7, 3],
                     ..Default::default()
                 };
-                let mov2 = GameMove {
+                let mov2 = GameMove2d {
                     start,
                     end: [7, 2],
                     ..Default::default()
@@ -529,7 +531,7 @@ fn king_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> 
                 if !is_black_checked(&game.make_move(&mov1))
                     && !is_black_checked(&game.make_move(&mov2))
                 {
-                    moves.push(GameMove {
+                    moves.push(GameMove2d {
                         start,
                         end: [7, 2],
                         castle: Some(CastleTypes::BlackQueen),
@@ -542,7 +544,7 @@ fn king_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> 
     moves
 }
 
-fn pawn_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> {
+fn pawn_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove2d> {
     let mut moves = Vec::new();
     if player != game.curr_move {
         return moves;
@@ -561,32 +563,32 @@ fn pawn_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> 
     let row = start[0] as i32 + forward;
     let col = start[1] as i32;
     if is_in_bounds([row, col]) && game.board[row as usize][col as usize].piece_type== PieceTypes::Empty {
-        let mov = GameMove {
+        let mov = GameMove2d {
             start,
             end: [row as usize, col as usize],
             ..Default::default()
         };
         if !check_function(&game.make_move(&mov)) {
             if row == [7, 0][player as usize] {
-                moves.push(GameMove {
+                moves.push(GameMove2d {
                     start,
                     end: [row as usize, col as usize],
                     promote: Some(Pieces { piece_type: Queen, color}),
                     ..Default::default()
                 });
-                moves.push(GameMove {
+                moves.push(GameMove2d {
                     start,
                     end: [row as usize, col as usize],
                     promote: Some(Pieces { piece_type: Rook, color}),
                     ..Default::default()
                 });
-                moves.push(GameMove {
+                moves.push(GameMove2d {
                     start,
                     end: [row as usize, col as usize],
                     promote: Some(Pieces { piece_type: Bishop, color}),
                     ..Default::default()
                 });
-                moves.push(GameMove {
+                moves.push(GameMove2d {
                     start,
                     end: [row as usize, col as usize],
                     promote: Some(Pieces { piece_type: Knight, color}),
@@ -608,7 +610,7 @@ fn pawn_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> 
                 (row - forward) as usize,
                 col as usize,
             ]));
-            let mov = GameMove {
+            let mov = GameMove2d {
                 start,
                 end: [row as usize, col as usize],
                 passant,
@@ -631,14 +633,14 @@ fn pawn_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> 
     let passant_cap = [row as usize, col as usize] == passant_pos;
     if is_in_bounds([row, col]) && (game.board[row as usize][col as usize].piece_type != PieceTypes::Empty || passant_cap)
     {
-        let mov = GameMove {
+        let mov = GameMove2d {
             start,
             end: [row as usize, col as usize],
             ..Default::default()
         };
         if passant_cap && !check_function(&game.make_move(&mov)) {
             //Passant captures cannot promote
-            moves.push(GameMove {
+            moves.push(GameMove2d {
                 start,
                 end: passant_pos,
                 passant: Some(PassantTypes::PassantCapture([
@@ -652,25 +654,25 @@ fn pawn_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> 
                 Pieces { color: player, ..} => {
                     if player != color && !check_function(&game.make_move(&mov)) {
                         if row == [7, 0][player as usize] {
-                            moves.push(GameMove {
+                            moves.push(GameMove2d {
                                 start,
                                 end: [row as usize, col as usize],
                                 promote: Some(Pieces { piece_type: Queen, color}),
                                 ..Default::default()
                             });
-                            moves.push(GameMove {
+                            moves.push(GameMove2d {
                                 start,
                                 end: [row as usize, col as usize],
                                 promote: Some(Pieces { piece_type: Rook, color}),
                                 ..Default::default()
                             });
-                            moves.push(GameMove {
+                            moves.push(GameMove2d {
                                 start,
                                 end: [row as usize, col as usize],
                                 promote: Some(Pieces { piece_type: Bishop, color}),
                                 ..Default::default()
                             });
-                            moves.push(GameMove {
+                            moves.push(GameMove2d {
                                 start,
                                 end: [row as usize, col as usize],
                                 promote: Some(Pieces { piece_type: Knight, color}),
@@ -696,14 +698,14 @@ fn pawn_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> 
     let passant_cap = [row as usize, col as usize] == passant_pos;
     if is_in_bounds([row, col]) && (game.board[row as usize][col as usize].piece_type != PieceTypes::Empty || passant_cap)
     {
-        let mov = GameMove {
+        let mov = GameMove2d {
             start,
             end: [row as usize, col as usize],
             ..Default::default()
         };
         if passant_cap && !check_function(&game.make_move(&mov)) {
             //Passant captures cannot promote
-            moves.push(GameMove {
+            moves.push(GameMove2d {
                 start,
                 end: passant_pos,
                 passant: Some(PassantTypes::PassantCapture([
@@ -717,25 +719,25 @@ fn pawn_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove> 
                 Pieces { color: player, ..} => {
                     if player != color && !check_function(&game.make_move(&mov)) {
                         if row == [7, 0][player as usize] {
-                            moves.push(GameMove {
+                            moves.push(GameMove2d {
                                 start,
                                 end: [row as usize, col as usize],
                                 promote: Some(Pieces { piece_type: Queen, color}),
                                 ..Default::default()
                             });
-                            moves.push(GameMove {
+                            moves.push(GameMove2d {
                                 start,
                                 end: [row as usize, col as usize],
                                 promote: Some(Pieces { piece_type: Rook, color}),
                                 ..Default::default()
                             });
-                            moves.push(GameMove {
+                            moves.push(GameMove2d {
                                 start,
                                 end: [row as usize, col as usize],
                                 promote: Some(Pieces { piece_type: Bishop, color}),
                                 ..Default::default()
                             });
-                            moves.push(GameMove {
+                            moves.push(GameMove2d {
                                 start,
                                 end: [row as usize, col as usize],
                                 promote: Some(Pieces { piece_type: Knight, color}),

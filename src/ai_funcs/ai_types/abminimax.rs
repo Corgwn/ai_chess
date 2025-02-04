@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use crate::ai_funcs::ai_utils::heuristics::{heuristic, is_terminal};
 use crate::board_structs::board::Board;
-use crate::utils::game_move::GameMove;
+use crate::utils::gamemove2d::GameMove2d;
 use crate::utils::pieces::WHITE;
 use std::collections::BinaryHeap;
 use std::sync::mpsc::{Receiver, TryRecvError};
@@ -10,15 +10,15 @@ use std::time::Instant;
 pub struct ABMinimax {}
 
 impl ABMinimax {
-    pub fn find_move<T: Board>(&self, game: T, max_player: bool, time_left: u128) -> GameMove {
+    pub fn find_move<T: Board>(&self, game: T, max_player: bool, time_left: u128) -> GameMove2d {
         id_minimax(game, max_player, time_left)
     }
 
     pub fn uci_infinite_find_move<T: Board>(
         game: &T,
         rx: Receiver<&str>,
-        start_moves: Option<Vec<GameMove>>,
-    ) -> GameMove {
+        start_moves: Option<Vec<GameMove2d>>,
+    ) -> GameMove2d {
         let start_time = Instant::now();
         let max_player = game.get_curr_player();
 
@@ -60,9 +60,9 @@ impl ABMinimax {
         game: &T,
         time_to_search: u128,
         rx: Receiver<&str>,
-        start_moves: Option<Vec<GameMove>>,
+        start_moves: Option<Vec<GameMove2d>>,
         max_plies: Option<usize>,
-    ) -> GameMove {
+    ) -> GameMove2d {
         let mut second_iter_time = Instant::now();
         let start_time = Instant::now();
         let max_player = game.get_curr_player();
@@ -120,7 +120,7 @@ impl ABMinimax {
     }
 }
 
-fn max_choice<T: Board>(game: &T, depth: usize, available_moves: &Vec<GameMove>) -> GameMove {
+fn max_choice<T: Board>(game: &T, depth: usize, available_moves: &Vec<GameMove2d>) -> GameMove2d {
     let mut best_move = available_moves[0];
     let mut best_value = i32::MIN;
     let moves = BinaryHeap::from_iter(available_moves.iter());
@@ -140,7 +140,7 @@ fn max_choice<T: Board>(game: &T, depth: usize, available_moves: &Vec<GameMove>)
     best_move
 }
 
-fn min_choice<T: Board>(game: &T, depth: usize, available_moves: &Vec<GameMove>) -> GameMove {
+fn min_choice<T: Board>(game: &T, depth: usize, available_moves: &Vec<GameMove2d>) -> GameMove2d {
     let mut best_move = available_moves[0];
     let mut best_value = i32::MAX;
     let moves = BinaryHeap::from_iter(available_moves.iter());
@@ -165,7 +165,7 @@ fn max_value<T: Board>(
     depth: usize,
     alpha: &i32,
     beta: &i32,
-    available_moves: &Vec<GameMove>,
+    available_moves: &Vec<GameMove2d>,
 ) -> i32 {
     if let Some(winner) = is_terminal(&game, available_moves) {
         return winner;
@@ -198,7 +198,7 @@ fn min_value<T: Board>(
     depth: usize,
     alpha: &i32,
     beta: &i32,
-    available_moves: &Vec<GameMove>,
+    available_moves: &Vec<GameMove2d>,
 ) -> i32 {
     if let Some(winner) = is_terminal(&game, available_moves) {
         return winner;
@@ -226,7 +226,7 @@ fn min_value<T: Board>(
     value
 }
 
-fn id_minimax<T: Board>(game: T, max_player: bool, time_left: u128) -> GameMove {
+fn id_minimax<T: Board>(game: T, max_player: bool, time_left: u128) -> GameMove2d {
     let mut second_iter_time = Instant::now();
     let available_time = time_left / 20;
 

@@ -13,6 +13,7 @@ pub enum PieceTypes {
     King,
     Pawn,
     Empty,
+    Null,
 }
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
