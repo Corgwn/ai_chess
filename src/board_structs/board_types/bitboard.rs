@@ -1,3 +1,1 @@
-struct BitBoard {
-    
-}
+struct BitBoard {}

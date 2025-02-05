@@ -1,4 +1,3 @@
-use std::cmp::PartialEq;
 use crate::board_structs::board;
 use crate::board_structs::board::Board;
 use crate::utils::gamemove2d::to_let;
@@ -6,14 +5,38 @@ use crate::utils::gamemove2d::to_num;
 use crate::utils::gamemove2d::CastleTypes;
 use crate::utils::gamemove2d::GameMove2d;
 use crate::utils::gamemove2d::PassantTypes;
-use crate::utils::pieces::{Pieces, BLACK, WHITE, PieceTypes::*, PieceColors::*, PieceTypes, PieceColors};
+use crate::utils::pieces::{
+    PieceColors, PieceColors::*, PieceTypes, PieceTypes::*, Pieces, BLACK, WHITE,
+};
+use std::cmp::PartialEq;
 
 const START_POSITION: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-const KNIGHT_OFFSETS: [[i32; 2]; 8] = [[-2, -1], [-2, 1], [2, -1], [2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2]];
+const KNIGHT_OFFSETS: [[i32; 2]; 8] = [
+    [-2, -1],
+    [-2, 1],
+    [2, -1],
+    [2, 1],
+    [-1, -2],
+    [-1, 2],
+    [1, -2],
+    [1, 2],
+];
 const ROOK_OFFSETS: [[i32; 2]; 4] = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 const BISHOP_OFFSETS: [[i32; 2]; 4] = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
-const ROYAL_OFFSETS: [[i32; 2]; 8] = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]];
-const EMPTY_PIECE: Pieces = Pieces { piece_type: PieceTypes::Empty, color: PieceColors::Empty };
+const ROYAL_OFFSETS: [[i32; 2]; 8] = [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+    [-1, -1],
+    [-1, 1],
+    [1, -1],
+    [1, 1],
+];
+const EMPTY_PIECE: Pieces = Pieces {
+    piece_type: PieceTypes::Empty,
+    color: PieceColors::Empty,
+};
 
 /* Game state representation and member functions */
 #[derive(Clone, Debug, Copy)]
@@ -41,89 +64,126 @@ impl Array2D {
         for (i, row) in board.iter().enumerate() {
             for (j, piece) in row.iter().enumerate() {
                 match piece {
-                    Pieces { piece_type: Knight, .. } => {
+                    Pieces {
+                        piece_type: Knight, ..
+                    } => {
                         for offset in KNIGHT_OFFSETS {
                             let test_pos: [i32; 2] = [i as i32 + offset[0], j as i32 + offset[1]];
                             if is_in_bounds(test_pos) {
-                                maps[piece.get_color() as usize][test_pos[0] as usize][test_pos[1] as usize] += 1;
+                                maps[piece.get_color() as usize][test_pos[0] as usize]
+                                    [test_pos[1] as usize] += 1;
                             }
                         }
                     }
-                    Pieces { piece_type: Rook, .. } => {
+                    Pieces {
+                        piece_type: Rook, ..
+                    } => {
                         'dir: for offset in ROOK_OFFSETS {
-                            let mut test_pos: [i32; 2] = [i as i32 + offset[0], j as i32 + offset[1]];
+                            let mut test_pos: [i32; 2] =
+                                [i as i32 + offset[0], j as i32 + offset[1]];
                             loop {
                                 if !is_in_bounds(test_pos) {
                                     continue 'dir;
                                 }
-                                if board[test_pos[0] as usize][test_pos[1] as usize].piece_type != PieceTypes::Empty {
-                                    maps[piece.get_color() as usize][test_pos[0] as usize][test_pos[1] as usize] += 1;
+                                if board[test_pos[0] as usize][test_pos[1] as usize].piece_type
+                                    != PieceTypes::Empty
+                                {
+                                    maps[piece.get_color() as usize][test_pos[0] as usize]
+                                        [test_pos[1] as usize] += 1;
                                     continue 'dir;
                                 }
-                                maps[piece.get_color() as usize][test_pos[0] as usize][test_pos[1] as usize] += 1;
+                                maps[piece.get_color() as usize][test_pos[0] as usize]
+                                    [test_pos[1] as usize] += 1;
                                 test_pos = [test_pos[0] + offset[0], test_pos[1] + offset[1]];
                             }
                         }
                     }
-                    Pieces { piece_type: Bishop, .. } => {
+                    Pieces {
+                        piece_type: Bishop, ..
+                    } => {
                         'dir: for offset in BISHOP_OFFSETS {
-                            let mut test_pos: [i32; 2] = [i as i32 + offset[0], j as i32 + offset[1]];
+                            let mut test_pos: [i32; 2] =
+                                [i as i32 + offset[0], j as i32 + offset[1]];
                             loop {
                                 if !is_in_bounds(test_pos) {
                                     continue 'dir;
                                 }
-                                if board[test_pos[0] as usize][test_pos[1] as usize].piece_type != PieceTypes::Empty {
-                                    maps[piece.get_color() as usize][test_pos[0] as usize][test_pos[1] as usize] += 1;
+                                if board[test_pos[0] as usize][test_pos[1] as usize].piece_type
+                                    != PieceTypes::Empty
+                                {
+                                    maps[piece.get_color() as usize][test_pos[0] as usize]
+                                        [test_pos[1] as usize] += 1;
                                     continue 'dir;
                                 }
-                                maps[piece.get_color() as usize][test_pos[0] as usize][test_pos[1] as usize] += 1;
+                                maps[piece.get_color() as usize][test_pos[0] as usize]
+                                    [test_pos[1] as usize] += 1;
                                 test_pos = [test_pos[0] + offset[0], test_pos[1] + offset[1]];
                             }
                         }
                     }
-                    Pieces { piece_type: Queen, .. } => {
+                    Pieces {
+                        piece_type: Queen, ..
+                    } => {
                         'dir: for offset in ROYAL_OFFSETS {
-                            let mut test_pos: [i32; 2] = [i as i32 + offset[0], j as i32 + offset[1]];
+                            let mut test_pos: [i32; 2] =
+                                [i as i32 + offset[0], j as i32 + offset[1]];
                             loop {
                                 if !is_in_bounds(test_pos) {
                                     continue 'dir;
                                 }
-                                if board[test_pos[0] as usize][test_pos[1] as usize].piece_type != PieceTypes::Empty {
-                                    maps[piece.get_color() as usize][test_pos[0] as usize][test_pos[1] as usize] += 1;
+                                if board[test_pos[0] as usize][test_pos[1] as usize].piece_type
+                                    != PieceTypes::Empty
+                                {
+                                    maps[piece.get_color() as usize][test_pos[0] as usize]
+                                        [test_pos[1] as usize] += 1;
                                     continue 'dir;
                                 }
-                                maps[piece.get_color() as usize][test_pos[0] as usize][test_pos[1] as usize] += 1;
+                                maps[piece.get_color() as usize][test_pos[0] as usize]
+                                    [test_pos[1] as usize] += 1;
                                 test_pos = [test_pos[0] + offset[0], test_pos[1] + offset[1]];
                             }
                         }
                     }
-                    Pieces { piece_type: King, .. } => {
+                    Pieces {
+                        piece_type: King, ..
+                    } => {
                         'dir: for offset in ROYAL_OFFSETS {
                             let test_pos: [i32; 2] = [i as i32 + offset[0], j as i32 + offset[1]];
                             if !is_in_bounds(test_pos) {
                                 continue 'dir;
                             }
-                            maps[piece.get_color() as usize][test_pos[0] as usize][test_pos[1] as usize] += 1;
+                            maps[piece.get_color() as usize][test_pos[0] as usize]
+                                [test_pos[1] as usize] += 1;
                         }
                     }
-                    Pieces { piece_type: Pawn, color: Black } => {
+                    Pieces {
+                        piece_type: Pawn,
+                        color: Black,
+                    } => {
                         let test_pos = [i as i32 - 1, j as i32 - 1];
                         if is_in_bounds(test_pos) {
-                            maps[piece.get_color() as usize][test_pos[0] as usize][test_pos[1] as usize] += 1;
+                            maps[piece.get_color() as usize][test_pos[0] as usize]
+                                [test_pos[1] as usize] += 1;
                         }
                         let test_pos = [i as i32 - 1, j as i32 + 1];
                         if is_in_bounds(test_pos) {
-                            maps[piece.get_color() as usize][test_pos[0] as usize][test_pos[1] as usize] += 1;
+                            maps[piece.get_color() as usize][test_pos[0] as usize]
+                                [test_pos[1] as usize] += 1;
                         }
                     }
-                    Pieces { piece_type: Pawn, color: White } => {
+                    Pieces {
+                        piece_type: Pawn,
+                        color: White,
+                    } => {
                         let test_pos = [i as i32 + 1, j as i32 - 1];
                         if is_in_bounds(test_pos) {
-                            maps[piece.get_color() as usize][test_pos[0] as usize][test_pos[1] as usize] += 1;
+                            maps[piece.get_color() as usize][test_pos[0] as usize]
+                                [test_pos[1] as usize] += 1;
                         }
                         let test_pos = [i as i32 + 1, j as i32 + 1];
                         if is_in_bounds(test_pos) {
-                            maps[piece.get_color() as usize][test_pos[0] as usize][test_pos[1] as usize] += 1;
+                            maps[piece.get_color() as usize][test_pos[0] as usize]
+                                [test_pos[1] as usize] += 1;
                         }
                     }
                     _ => {}
@@ -193,8 +253,14 @@ impl board::Board for Array2D {
         for (i, row) in board_state.iter().enumerate() {
             for (j, square) in row.iter().enumerate() {
                 match square {
-                    Pieces { piece_type: King, color: Black } => black_king = [i, j],
-                    Pieces { piece_type: King, color: White } => white_king = [i, j],
+                    Pieces {
+                        piece_type: King,
+                        color: Black,
+                    } => black_king = [i, j],
+                    Pieces {
+                        piece_type: King,
+                        color: White,
+                    } => white_king = [i, j],
                     _ => continue,
                 }
             }
@@ -213,7 +279,7 @@ impl board::Board for Array2D {
             white_king,
             black_king,
             white_attack_map,
-            black_attack_map
+            black_attack_map,
         };
 
         //Calculate if a king is in check
@@ -229,14 +295,56 @@ impl board::Board for Array2D {
             for j in 0..8 {
                 let piece = self.board[i][j];
                 match piece {
-                    Pieces { piece_type: PieceTypes::Null, .. } => continue,
-                    Pieces { piece_type: PieceTypes::Empty, .. } => continue,
-                    Pieces { piece_type: Rook, .. } => moves.append(&mut find_moves(self, [i, j], piece.get_color(), ROOK_OFFSETS.to_vec(), true)),
-                    Pieces { piece_type: Knight, .. } => moves.append(&mut find_moves(self, [i, j], piece.get_color(), KNIGHT_OFFSETS.to_vec(), false)),
-                    Pieces { piece_type: Bishop, .. } => moves.append(&mut find_moves(self, [i, j], piece.get_color(), BISHOP_OFFSETS.to_vec(), true)),
-                    Pieces { piece_type: Queen, .. } => moves.append(&mut find_moves(self, [i, j], piece.get_color(), ROYAL_OFFSETS.to_vec(), true)),
-                    Pieces { piece_type: King, .. } => moves.append(&mut king_moves(self, [i, j], piece.get_color())),
-                    Pieces { piece_type: Pawn, .. } => moves.append(&mut pawn_moves(self, [i, j], piece.get_color())),
+                    Pieces {
+                        piece_type: PieceTypes::Null,
+                        ..
+                    } => continue,
+                    Pieces {
+                        piece_type: PieceTypes::Empty,
+                        ..
+                    } => continue,
+                    Pieces {
+                        piece_type: Rook, ..
+                    } => moves.append(&mut find_moves(
+                        self,
+                        [i, j],
+                        piece.get_color(),
+                        ROOK_OFFSETS.to_vec(),
+                        true,
+                    )),
+                    Pieces {
+                        piece_type: Knight, ..
+                    } => moves.append(&mut find_moves(
+                        self,
+                        [i, j],
+                        piece.get_color(),
+                        KNIGHT_OFFSETS.to_vec(),
+                        false,
+                    )),
+                    Pieces {
+                        piece_type: Bishop, ..
+                    } => moves.append(&mut find_moves(
+                        self,
+                        [i, j],
+                        piece.get_color(),
+                        BISHOP_OFFSETS.to_vec(),
+                        true,
+                    )),
+                    Pieces {
+                        piece_type: Queen, ..
+                    } => moves.append(&mut find_moves(
+                        self,
+                        [i, j],
+                        piece.get_color(),
+                        ROYAL_OFFSETS.to_vec(),
+                        true,
+                    )),
+                    Pieces {
+                        piece_type: King, ..
+                    } => moves.append(&mut king_moves(self, [i, j], piece.get_color())),
+                    Pieces {
+                        piece_type: Pawn, ..
+                    } => moves.append(&mut pawn_moves(self, [i, j], piece.get_color())),
                 }
             }
         }
@@ -263,22 +371,22 @@ impl board::Board for Array2D {
                     let temp = result.board[0][7];
                     result.board[0][7] = EMPTY_PIECE;
                     result.board[0][5] = temp;
-                },
+                }
                 CastleTypes::WhiteQueen => {
                     let temp = result.board[0][0];
                     result.board[0][0] = EMPTY_PIECE;
                     result.board[0][3] = temp;
-                },
+                }
                 CastleTypes::BlackKing => {
                     let temp = result.board[7][7];
                     result.board[7][7] = EMPTY_PIECE;
                     result.board[7][5] = temp;
-                },
+                }
                 CastleTypes::BlackQueen => {
                     let temp = result.board[7][0];
                     result.board[7][0] = EMPTY_PIECE;
                     result.board[7][3] = temp;
-                },
+                }
             }
         }
 
@@ -297,8 +405,14 @@ impl board::Board for Array2D {
 
         //Update the kings position
         match piece {
-            Pieces { piece_type: King, color: Black } => result.black_king = mov.end,
-            Pieces { piece_type: King, color: White} => result.white_king = mov.end,
+            Pieces {
+                piece_type: King,
+                color: Black,
+            } => result.black_king = mov.end,
+            Pieces {
+                piece_type: King,
+                color: White,
+            } => result.white_king = mov.end,
             _ => {}
         }
 
@@ -339,7 +453,8 @@ impl board::Board for Array2D {
         }
 
         // Calculate Attack Maps
-        [result.white_attack_map, result.black_attack_map] = Array2D::generate_attack_maps(result.board);
+        [result.white_attack_map, result.black_attack_map] =
+            Array2D::generate_attack_maps(result.board);
 
         result
     }
@@ -362,7 +477,13 @@ impl board::Board for Array2D {
 }
 
 /* Supporting Functions */
-fn find_moves(game: &Array2D, start: [usize; 2], player: bool, offsets: Vec<[i32; 2]>, ray: bool) -> Vec<GameMove2d> {
+fn find_moves(
+    game: &Array2D,
+    start: [usize; 2],
+    player: bool,
+    offsets: Vec<[i32; 2]>,
+    ray: bool,
+) -> Vec<GameMove2d> {
     let mut moves = Vec::new();
     if player != game.curr_move {
         return moves;
@@ -415,9 +536,15 @@ fn find_moves(game: &Array2D, start: [usize; 2], player: bool, offsets: Vec<[i32
         }
     }
     if player {
-        moves.into_iter().filter(|x| !is_black_checked(&game.make_move(x))).collect()
+        moves
+            .into_iter()
+            .filter(|x| !is_black_checked(&game.make_move(x)))
+            .collect()
     } else {
-        moves.into_iter().filter(|x| !is_white_checked(&game.make_move(x))).collect()
+        moves
+            .into_iter()
+            .filter(|x| !is_white_checked(&game.make_move(x)))
+            .collect()
     }
 }
 
@@ -427,7 +554,13 @@ fn king_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove2d
         return moves;
     }
     // Generate standard moves
-    moves.append(&mut find_moves(game, start, player, ROYAL_OFFSETS.to_vec(), false));
+    moves.append(&mut find_moves(
+        game,
+        start,
+        player,
+        ROYAL_OFFSETS.to_vec(),
+        false,
+    ));
     //If someone is in check, either the game is over or it's the current player and therefore can't castle
     if game.check.is_some() {
         return moves;
@@ -437,7 +570,10 @@ fn king_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove2d
         //White Castles
         WHITE => {
             //King side Castle
-            if game.castling_rights[0] && game.board[0][5].piece_type == PieceTypes::Empty && game.board[0][6].piece_type == PieceTypes::Empty {
+            if game.castling_rights[0]
+                && game.board[0][5].piece_type == PieceTypes::Empty
+                && game.board[0][6].piece_type == PieceTypes::Empty
+            {
                 let mov1 = GameMove2d {
                     start,
                     end: [0, 5],
@@ -490,7 +626,10 @@ fn king_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove2d
         //Black Castles
         BLACK => {
             //King side Castle
-            if game.castling_rights[2] && game.board[7][5].piece_type == PieceTypes::Empty && game.board[7][6].piece_type == PieceTypes::Empty {
+            if game.castling_rights[2]
+                && game.board[7][5].piece_type == PieceTypes::Empty
+                && game.board[7][6].piece_type == PieceTypes::Empty
+            {
                 let mov1 = GameMove2d {
                     start,
                     end: [7, 5],
@@ -562,7 +701,9 @@ fn pawn_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove2d
     //Pawn moves forward one - available if square ahead is empty and in bounds
     let row = start[0] as i32 + forward;
     let col = start[1] as i32;
-    if is_in_bounds([row, col]) && game.board[row as usize][col as usize].piece_type== PieceTypes::Empty {
+    if is_in_bounds([row, col])
+        && game.board[row as usize][col as usize].piece_type == PieceTypes::Empty
+    {
         let mov = GameMove2d {
             start,
             end: [row as usize, col as usize],
@@ -573,25 +714,37 @@ fn pawn_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove2d
                 moves.push(GameMove2d {
                     start,
                     end: [row as usize, col as usize],
-                    promote: Some(Pieces { piece_type: Queen, color}),
+                    promote: Some(Pieces {
+                        piece_type: Queen,
+                        color,
+                    }),
                     ..Default::default()
                 });
                 moves.push(GameMove2d {
                     start,
                     end: [row as usize, col as usize],
-                    promote: Some(Pieces { piece_type: Rook, color}),
+                    promote: Some(Pieces {
+                        piece_type: Rook,
+                        color,
+                    }),
                     ..Default::default()
                 });
                 moves.push(GameMove2d {
                     start,
                     end: [row as usize, col as usize],
-                    promote: Some(Pieces { piece_type: Bishop, color}),
+                    promote: Some(Pieces {
+                        piece_type: Bishop,
+                        color,
+                    }),
                     ..Default::default()
                 });
                 moves.push(GameMove2d {
                     start,
                     end: [row as usize, col as usize],
-                    promote: Some(Pieces { piece_type: Knight, color}),
+                    promote: Some(Pieces {
+                        piece_type: Knight,
+                        color,
+                    }),
                     ..Default::default()
                 });
             } else {
@@ -631,7 +784,8 @@ fn pawn_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove2d
         no_capture
     };
     let passant_cap = [row as usize, col as usize] == passant_pos;
-    if is_in_bounds([row, col]) && (game.board[row as usize][col as usize].piece_type != PieceTypes::Empty || passant_cap)
+    if is_in_bounds([row, col])
+        && (game.board[row as usize][col as usize].piece_type != PieceTypes::Empty || passant_cap)
     {
         let mov = GameMove2d {
             start,
@@ -651,31 +805,43 @@ fn pawn_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove2d
             });
         } else {
             match game.board[row as usize][col as usize] {
-                Pieces { color: player, ..} => {
+                Pieces { color: player, .. } => {
                     if player != color && !check_function(&game.make_move(&mov)) {
                         if row == [7, 0][player as usize] {
                             moves.push(GameMove2d {
                                 start,
                                 end: [row as usize, col as usize],
-                                promote: Some(Pieces { piece_type: Queen, color}),
+                                promote: Some(Pieces {
+                                    piece_type: Queen,
+                                    color,
+                                }),
                                 ..Default::default()
                             });
                             moves.push(GameMove2d {
                                 start,
                                 end: [row as usize, col as usize],
-                                promote: Some(Pieces { piece_type: Rook, color}),
+                                promote: Some(Pieces {
+                                    piece_type: Rook,
+                                    color,
+                                }),
                                 ..Default::default()
                             });
                             moves.push(GameMove2d {
                                 start,
                                 end: [row as usize, col as usize],
-                                promote: Some(Pieces { piece_type: Bishop, color}),
+                                promote: Some(Pieces {
+                                    piece_type: Bishop,
+                                    color,
+                                }),
                                 ..Default::default()
                             });
                             moves.push(GameMove2d {
                                 start,
                                 end: [row as usize, col as usize],
-                                promote: Some(Pieces { piece_type: Knight, color}),
+                                promote: Some(Pieces {
+                                    piece_type: Knight,
+                                    color,
+                                }),
                                 ..Default::default()
                             });
                         } else {
@@ -696,7 +862,8 @@ fn pawn_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove2d
         no_capture
     };
     let passant_cap = [row as usize, col as usize] == passant_pos;
-    if is_in_bounds([row, col]) && (game.board[row as usize][col as usize].piece_type != PieceTypes::Empty || passant_cap)
+    if is_in_bounds([row, col])
+        && (game.board[row as usize][col as usize].piece_type != PieceTypes::Empty || passant_cap)
     {
         let mov = GameMove2d {
             start,
@@ -716,31 +883,43 @@ fn pawn_moves(game: &Array2D, start: [usize; 2], player: bool) -> Vec<GameMove2d
             });
         } else {
             match game.board[row as usize][col as usize] {
-                Pieces { color: player, ..} => {
+                Pieces { color: player, .. } => {
                     if player != color && !check_function(&game.make_move(&mov)) {
                         if row == [7, 0][player as usize] {
                             moves.push(GameMove2d {
                                 start,
                                 end: [row as usize, col as usize],
-                                promote: Some(Pieces { piece_type: Queen, color}),
+                                promote: Some(Pieces {
+                                    piece_type: Queen,
+                                    color,
+                                }),
                                 ..Default::default()
                             });
                             moves.push(GameMove2d {
                                 start,
                                 end: [row as usize, col as usize],
-                                promote: Some(Pieces { piece_type: Rook, color}),
+                                promote: Some(Pieces {
+                                    piece_type: Rook,
+                                    color,
+                                }),
                                 ..Default::default()
                             });
                             moves.push(GameMove2d {
                                 start,
                                 end: [row as usize, col as usize],
-                                promote: Some(Pieces { piece_type: Bishop, color}),
+                                promote: Some(Pieces {
+                                    piece_type: Bishop,
+                                    color,
+                                }),
                                 ..Default::default()
                             });
                             moves.push(GameMove2d {
                                 start,
                                 end: [row as usize, col as usize],
-                                promote: Some(Pieces { piece_type: Knight, color}),
+                                promote: Some(Pieces {
+                                    piece_type: Knight,
+                                    color,
+                                }),
                                 ..Default::default()
                             });
                         } else {
@@ -806,22 +985,26 @@ fn test_move_generation() {
 
 #[test]
 fn test_attack_map_generation() {
-    const STARTING_ATTACKS_WHITE: [[u8;8];8] = [[0, 1, 1, 1, 1, 1, 1, 0],
-                                                [1, 1, 1, 4, 4, 1, 1, 1],
-                                                [2, 2, 3, 2, 2, 3, 2, 2],
-                                                [0, 0, 0, 0, 0, 0, 0, 0],
-                                                [0, 0, 0, 0, 0, 0, 0, 0],
-                                                [0, 0, 0, 0, 0, 0, 0, 0],
-                                                [0, 0, 0, 0, 0, 0, 0, 0],
-                                                [0, 0, 0, 0, 0, 0, 0, 0],];
-    const STARTING_ATTACKS_BLACK: [[u8;8];8] = [[0, 0, 0, 0, 0, 0, 0, 0],
-                                                [0, 0, 0, 0, 0, 0, 0, 0],
-                                                [0, 0, 0, 0, 0, 0, 0, 0],
-                                                [0, 0, 0, 0, 0, 0, 0, 0],
-                                                [0, 0, 0, 0, 0, 0, 0, 0],
-                                                [2, 2, 3, 2, 2, 3, 2, 2],
-                                                [1, 1, 1, 4, 4, 1, 1, 1],
-                                                [0, 1, 1, 1, 1, 1, 1, 0],];
+    const STARTING_ATTACKS_WHITE: [[u8; 8]; 8] = [
+        [0, 1, 1, 1, 1, 1, 1, 0],
+        [1, 1, 1, 4, 4, 1, 1, 1],
+        [2, 2, 3, 2, 2, 3, 2, 2],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+    ];
+    const STARTING_ATTACKS_BLACK: [[u8; 8]; 8] = [
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [2, 2, 3, 2, 2, 3, 2, 2],
+        [1, 1, 1, 4, 4, 1, 1, 1],
+        [0, 1, 1, 1, 1, 1, 1, 0],
+    ];
     let game = Array2D::setup_board(None);
     assert_eq!(STARTING_ATTACKS_WHITE, game.white_attack_map);
     assert_eq!(STARTING_ATTACKS_BLACK, game.black_attack_map);

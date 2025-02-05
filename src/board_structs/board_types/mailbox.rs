@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use regex::bytes::CaptureLocations;
-
 use crate::utils::castling::CastleRights;
+use crate::utils::checks::Checks;
 use crate::utils::gamemove1d::GameMove1d;
 use crate::utils::pieces::{PieceColors, PieceTypes, Pieces};
 
@@ -18,7 +17,14 @@ const DOWN_RIGHT: i8 = -9;
 const KNIGHT_OFFSETS: [i8; 8] = [-21, -19, -12, -8, 8, 12, 19, 21];
 const BISHOP_OFFSETS: [i8; 4] = [UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT];
 const ROOK_OFFSETS: [i8; 4] = [UP, LEFT, RIGHT, DOWN];
-const QUEEN_OFFSETS: [i8; 8] = [UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT, UP, LEFT, RIGHT, DOWN];
+const QUEEN_OFFSETS: [i8; 8] = [
+    UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT, UP, LEFT, RIGHT, DOWN,
+];
+
+#[derive(Clone, Copy)]
+struct Position {
+    value: usize,
+}
 
 #[derive(Clone)]
 pub struct Mailbox {
@@ -27,12 +33,12 @@ pub struct Mailbox {
     //In order: white kingside, white queenside, black kingside, black queenside
     castling_rights: CastleRights,
     //None if no en passant is possible, Some if possible by taking the position given with a pawn
-    en_passant: Option<usize>,
-    half_moves: usize,
-    full_moves: usize,
-    check: Option<bool>,
-    white_king: usize,
-    black_king: usize,
+    en_passant: Option<Position>,
+    half_moves: u8,
+    full_moves: u8,
+    check: Option<Checks>,
+    white_king: Position,
+    black_king: Position,
     previous_state: Option<Arc<Mailbox>>,
     black_attack_map: [Pieces; 120],
     white_attack_map: [Pieces; 120],
@@ -44,17 +50,42 @@ impl Mailbox {
     }
     fn get_valid_moves(&self) -> Vec<GameMove1d> {
         let mut moves = vec![];
-        for (pos, piece) in self.board.iter().enumerate() {
+        for (i, piece) in self.board.iter().enumerate() {
+            let pos = Position { value: i };
             match piece {
-                Pieces { piece_type: PieceTypes::Empty, .. } => continue,
-                Pieces { piece_type: PieceTypes::Null, .. } => continue,
+                Pieces {
+                    piece_type: PieceTypes::Empty,
+                    ..
+                } => continue,
+                Pieces {
+                    piece_type: PieceTypes::Null,
+                    ..
+                } => continue,
                 Pieces { color: x, .. } if x != &self.curr_player => continue,
-                Pieces { piece_type: PieceTypes::Knight, .. } => moves.extend(self.generate_moves(pos, &KNIGHT_OFFSETS, false)),
-                Pieces { piece_type: PieceTypes::Rook, .. } => moves.extend(self.generate_moves(pos, &ROOK_OFFSETS, true)),
-                Pieces { piece_type: PieceTypes::Bishop, .. } => moves.extend(self.generate_moves(pos, &BISHOP_OFFSETS, true)),
-                Pieces { piece_type: PieceTypes::Queen, .. } => moves.extend(self.generate_moves(pos, &QUEEN_OFFSETS, true)),
-                Pieces { piece_type: PieceTypes::King, .. } => moves.extend(self.generate_king_moves(pos)),
-                Pieces { piece_type: PieceTypes::Pawn, .. } => moves.extend(self.generate_pawn_moves(pos)),
+                Pieces {
+                    piece_type: PieceTypes::Knight,
+                    ..
+                } => moves.extend(self.generate_moves(pos, &KNIGHT_OFFSETS, false)),
+                Pieces {
+                    piece_type: PieceTypes::Rook,
+                    ..
+                } => moves.extend(self.generate_moves(pos, &ROOK_OFFSETS, true)),
+                Pieces {
+                    piece_type: PieceTypes::Bishop,
+                    ..
+                } => moves.extend(self.generate_moves(pos, &BISHOP_OFFSETS, true)),
+                Pieces {
+                    piece_type: PieceTypes::Queen,
+                    ..
+                } => moves.extend(self.generate_moves(pos, &QUEEN_OFFSETS, true)),
+                Pieces {
+                    piece_type: PieceTypes::King,
+                    ..
+                } => moves.extend(self.generate_king_moves(pos)),
+                Pieces {
+                    piece_type: PieceTypes::Pawn,
+                    ..
+                } => moves.extend(self.generate_pawn_moves(pos)),
             };
         }
         return moves;
@@ -71,17 +102,16 @@ impl Mailbox {
     fn get_castle_rights(&self) -> CastleRights {
         self.castling_rights
     }
-    fn check_legal_square(&self, pos: usize) -> bool {
-        self.board[pos].piece_type == PieceTypes::Null
+    fn check_legal_square(&self, pos: Position) -> bool {
+        self.board[pos.value].piece_type == PieceTypes::Null
     }
-    fn generate_moves(&self, pos: usize, offsets: &[i8], ray: bool) -> Vec<GameMove1d> {
+    fn generate_moves(&self, pos: Position, offsets: &[i8], ray: bool) -> Vec<GameMove1d> {
         todo!()
     }
-    fn generate_king_moves(&self, pos: usize) -> Vec<GameMove1d> {
+    fn generate_king_moves(&self, pos: Position) -> Vec<GameMove1d> {
         todo!()
     }
-    fn generate_pawn_moves(&self, pos: usize) -> Vec<GameMove1d> {
+    fn generate_pawn_moves(&self, pos: Position) -> Vec<GameMove1d> {
         todo!()
     }
 }
-

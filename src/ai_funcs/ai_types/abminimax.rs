@@ -55,7 +55,7 @@ impl ABMinimax {
         }
         best_move
     }
-    
+
     pub fn uci_timed_find_move<T: Board>(
         game: &T,
         time_to_search: u128,

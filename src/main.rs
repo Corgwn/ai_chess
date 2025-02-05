@@ -216,7 +216,7 @@ fn run_sample_game() {
             "\nTurn number: {} | Player: {} | Move: {}\n",
             turn_num, turn_color, next_move
         );
-        print_board(&game);        
+        print_board(&game);
     }
 }
 

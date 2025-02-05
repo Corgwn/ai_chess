@@ -1,4 +1,4 @@
-use crate::utils::pieces::{Pieces, PieceColors::*, PieceTypes::*, BLACK, WHITE, PieceTypes};
+use crate::utils::pieces::{PieceColors::*, PieceTypes, PieceTypes::*, Pieces, BLACK, WHITE};
 
 use crate::utils::gamemove2d::GameMove2d;
 use std::collections::HashMap;
@@ -168,36 +168,114 @@ const SQUARE_CONTROL_TABLE: [[f32; 8]; 8] = [
 fn get_position_value(piece: &Pieces, [row, col]: [usize; 2], game_time: bool) -> i32 {
     if game_time == ENDGAME {
         match piece {
-            Pieces { piece_type: PieceTypes::Empty, .. } => 0,
-            Pieces { piece_type: Pawn, color: White } => EG_PAWN_TABLE[row][col],
-            Pieces { piece_type: Pawn, color: Black } => -EG_PAWN_TABLE[7 - row][col],
-            Pieces { piece_type: King, color: White } => EG_KING_TABLE[row][col],
-            Pieces { piece_type: King, color: Black } => -EG_KING_TABLE[7 - row][col],
-            Pieces { piece_type: Queen, color: White } => EG_QUEEN_TABLE[row][col],
-            Pieces { piece_type: Queen, color: Black } => -EG_QUEEN_TABLE[7 - row][col],
-            Pieces { piece_type: Rook, color: White } => EG_ROOK_TABLE[row][col],
-            Pieces { piece_type: Rook, color: Black } => -EG_ROOK_TABLE[7 - row][col],
-            Pieces { piece_type: Bishop, color: White } => EG_BISHOP_TABLE[row][col],
-            Pieces { piece_type: Bishop, color: Black } => -EG_BISHOP_TABLE[7 - row][col],
-            Pieces { piece_type: Knight, color: White } => EG_KNIGHT_TABLE[row][col],
-            Pieces { piece_type: Knight, color: Black } => -EG_KNIGHT_TABLE[7 - row][col],
+            Pieces {
+                piece_type: PieceTypes::Empty,
+                ..
+            } => 0,
+            Pieces {
+                piece_type: Pawn,
+                color: White,
+            } => EG_PAWN_TABLE[row][col],
+            Pieces {
+                piece_type: Pawn,
+                color: Black,
+            } => -EG_PAWN_TABLE[7 - row][col],
+            Pieces {
+                piece_type: King,
+                color: White,
+            } => EG_KING_TABLE[row][col],
+            Pieces {
+                piece_type: King,
+                color: Black,
+            } => -EG_KING_TABLE[7 - row][col],
+            Pieces {
+                piece_type: Queen,
+                color: White,
+            } => EG_QUEEN_TABLE[row][col],
+            Pieces {
+                piece_type: Queen,
+                color: Black,
+            } => -EG_QUEEN_TABLE[7 - row][col],
+            Pieces {
+                piece_type: Rook,
+                color: White,
+            } => EG_ROOK_TABLE[row][col],
+            Pieces {
+                piece_type: Rook,
+                color: Black,
+            } => -EG_ROOK_TABLE[7 - row][col],
+            Pieces {
+                piece_type: Bishop,
+                color: White,
+            } => EG_BISHOP_TABLE[row][col],
+            Pieces {
+                piece_type: Bishop,
+                color: Black,
+            } => -EG_BISHOP_TABLE[7 - row][col],
+            Pieces {
+                piece_type: Knight,
+                color: White,
+            } => EG_KNIGHT_TABLE[row][col],
+            Pieces {
+                piece_type: Knight,
+                color: Black,
+            } => -EG_KNIGHT_TABLE[7 - row][col],
             _ => 0,
         }
     } else {
         match piece {
-            Pieces { piece_type: PieceTypes::Empty, .. } => 0,
-            Pieces { piece_type: Pawn, color: White } => MG_PAWN_TABLE[row][col],
-            Pieces { piece_type: Pawn, color: Black } => -MG_PAWN_TABLE[7 - row][col],
-            Pieces { piece_type: King, color: White } => MG_KING_TABLE[row][col],
-            Pieces { piece_type: King, color: Black } => -MG_KING_TABLE[7 - row][col],
-            Pieces { piece_type: Queen, color: White } => MG_QUEEN_TABLE[row][col],
-            Pieces { piece_type: Queen, color: Black } => -MG_QUEEN_TABLE[7 - row][col],
-            Pieces { piece_type: Rook, color: White } => MG_ROOK_TABLE[row][col],
-            Pieces { piece_type: Rook, color: Black } => -MG_ROOK_TABLE[7 - row][col],
-            Pieces { piece_type: Bishop, color: White } => MG_BISHOP_TABLE[row][col],
-            Pieces { piece_type: Bishop, color: Black } => -MG_BISHOP_TABLE[7 - row][col],
-            Pieces { piece_type: Knight, color: White } => MG_KNIGHT_TABLE[row][col],
-            Pieces { piece_type: Knight, color: Black } => -MG_KNIGHT_TABLE[7 - row][col],
+            Pieces {
+                piece_type: PieceTypes::Empty,
+                ..
+            } => 0,
+            Pieces {
+                piece_type: Pawn,
+                color: White,
+            } => MG_PAWN_TABLE[row][col],
+            Pieces {
+                piece_type: Pawn,
+                color: Black,
+            } => -MG_PAWN_TABLE[7 - row][col],
+            Pieces {
+                piece_type: King,
+                color: White,
+            } => MG_KING_TABLE[row][col],
+            Pieces {
+                piece_type: King,
+                color: Black,
+            } => -MG_KING_TABLE[7 - row][col],
+            Pieces {
+                piece_type: Queen,
+                color: White,
+            } => MG_QUEEN_TABLE[row][col],
+            Pieces {
+                piece_type: Queen,
+                color: Black,
+            } => -MG_QUEEN_TABLE[7 - row][col],
+            Pieces {
+                piece_type: Rook,
+                color: White,
+            } => MG_ROOK_TABLE[row][col],
+            Pieces {
+                piece_type: Rook,
+                color: Black,
+            } => -MG_ROOK_TABLE[7 - row][col],
+            Pieces {
+                piece_type: Bishop,
+                color: White,
+            } => MG_BISHOP_TABLE[row][col],
+            Pieces {
+                piece_type: Bishop,
+                color: Black,
+            } => -MG_BISHOP_TABLE[7 - row][col],
+            Pieces {
+                piece_type: Knight,
+                color: White,
+            } => MG_KNIGHT_TABLE[row][col],
+            Pieces {
+                piece_type: Knight,
+                color: Black,
+            } => -MG_KNIGHT_TABLE[7 - row][col],
             _ => 0,
         }
     }
@@ -229,14 +307,32 @@ pub fn heuristic<T: crate::board_structs::board::Board>(game: T) -> i32 {
     // Add material value to evaluation
     for (piece, number) in piece_counts.iter() {
         match piece {
-            Pieces { piece_type: PieceTypes::Null, .. } => {}
-            Pieces { piece_type: PieceTypes::Empty, .. } => {}
-            Pieces { piece_type: Queen, .. } => result += [QUEEN_VAL, -QUEEN_VAL][piece.get_color() as usize] * number,
-            Pieces { piece_type: Rook, .. } => result += [ROOK_VAL, -ROOK_VAL][piece.get_color() as usize] * number,
-            Pieces { piece_type: Bishop, ..} => result += [BISHOP_VAL, -BISHOP_VAL][piece.get_color() as usize] * number,
-            Pieces { piece_type: Knight, ..} => result += [KNIGHT_VAL, -KNIGHT_VAL][piece.get_color() as usize] * number,
-            Pieces { piece_type: King, ..} => result += [KING_VAL, -KING_VAL][piece.get_color() as usize] * number,
-            Pieces { piece_type: Pawn, ..} => result += [PAWN_VAL, -PAWN_VAL][piece.get_color() as usize] * number,
+            Pieces {
+                piece_type: PieceTypes::Null,
+                ..
+            } => {}
+            Pieces {
+                piece_type: PieceTypes::Empty,
+                ..
+            } => {}
+            Pieces {
+                piece_type: Queen, ..
+            } => result += [QUEEN_VAL, -QUEEN_VAL][piece.get_color() as usize] * number,
+            Pieces {
+                piece_type: Rook, ..
+            } => result += [ROOK_VAL, -ROOK_VAL][piece.get_color() as usize] * number,
+            Pieces {
+                piece_type: Bishop, ..
+            } => result += [BISHOP_VAL, -BISHOP_VAL][piece.get_color() as usize] * number,
+            Pieces {
+                piece_type: Knight, ..
+            } => result += [KNIGHT_VAL, -KNIGHT_VAL][piece.get_color() as usize] * number,
+            Pieces {
+                piece_type: King, ..
+            } => result += [KING_VAL, -KING_VAL][piece.get_color() as usize] * number,
+            Pieces {
+                piece_type: Pawn, ..
+            } => result += [PAWN_VAL, -PAWN_VAL][piece.get_color() as usize] * number,
         }
     }
     // Consider checks
@@ -247,12 +343,18 @@ pub fn heuristic<T: crate::board_structs::board::Board>(game: T) -> i32 {
         }
     }
     // Prefer to have two bishops
-    if let Some(x) = piece_counts.get(&Pieces { piece_type: Bishop, color: White }) {
+    if let Some(x) = piece_counts.get(&Pieces {
+        piece_type: Bishop,
+        color: White,
+    }) {
         if x > &1 {
             result += 20;
         }
     }
-    if let Some(x) = piece_counts.get(&Pieces { piece_type: Bishop, color: Black }) {
+    if let Some(x) = piece_counts.get(&Pieces {
+        piece_type: Bishop,
+        color: Black,
+    }) {
         if x > &1 {
             result -= 20;
         }

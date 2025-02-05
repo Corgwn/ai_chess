@@ -7,4 +7,3 @@ pub enum ChessError {
     #[snafu(display("Move given is not correct length"))]
     MoveParseLengthError,
 }
-

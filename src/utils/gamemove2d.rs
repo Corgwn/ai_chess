@@ -1,7 +1,7 @@
-use crate::utils::pieces::{Pieces, PieceColors};
-use std::fmt;
 use crate::utils::pieces::PieceColors::{Black, White};
 use crate::utils::pieces::PieceTypes::{Bishop, Knight, Queen, Rook};
+use crate::utils::pieces::{PieceColors, Pieces};
+use std::fmt;
 
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
 pub struct GameMove2d {
@@ -32,10 +32,22 @@ impl GameMove2d {
         let promote = if input.len() == 5 {
             let color: PieceColors = if chars[3] == '8' { White } else { Black };
             match chars[4] {
-                'b' => Some(Pieces { piece_type: Bishop, color}),
-                'k' => Some(Pieces { piece_type: Knight, color}),
-                'r' => Some(Pieces { piece_type: Rook, color}),
-                'q' => Some(Pieces { piece_type: Queen, color}),
+                'b' => Some(Pieces {
+                    piece_type: Bishop,
+                    color,
+                }),
+                'k' => Some(Pieces {
+                    piece_type: Knight,
+                    color,
+                }),
+                'r' => Some(Pieces {
+                    piece_type: Rook,
+                    color,
+                }),
+                'q' => Some(Pieces {
+                    piece_type: Queen,
+                    color,
+                }),
                 _ => None,
             }
         } else {

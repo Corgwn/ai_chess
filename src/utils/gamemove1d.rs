@@ -1,8 +1,8 @@
-use crate::utils::pieces::{Pieces, PieceColors};
-use std::fmt;
+use crate::utils::chess_errors::ChessError;
 use crate::utils::pieces::PieceColors::{Black, White};
 use crate::utils::pieces::PieceTypes::{Bishop, Knight, Queen, Rook};
-use crate::utils::chess_errors::ChessError;
+use crate::utils::pieces::{PieceColors, Pieces};
+use std::fmt;
 
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
 pub struct GameMove1d {
@@ -20,7 +20,7 @@ impl GameMove1d {
             return Err(ChessError::MoveParseLengthError);
         }
         if !input.chars().all(char::is_alphanumeric) {
-            return Err(ChessError::MoveParseAlphaNumError)
+            return Err(ChessError::MoveParseAlphaNumError);
         }
         let squares = if input.len() == 4 {
             input.split_at(2)
@@ -43,10 +43,22 @@ impl GameMove1d {
                 _ => PieceColors::Empty,
             };
             match input.chars().nth(4).unwrap() {
-                'b' => Some(Pieces { piece_type: Bishop, color}),
-                'k' => Some(Pieces { piece_type: Knight, color}),
-                'r' => Some(Pieces { piece_type: Rook, color}),
-                'q' => Some(Pieces { piece_type: Queen, color}),
+                'b' => Some(Pieces {
+                    piece_type: Bishop,
+                    color,
+                }),
+                'k' => Some(Pieces {
+                    piece_type: Knight,
+                    color,
+                }),
+                'r' => Some(Pieces {
+                    piece_type: Rook,
+                    color,
+                }),
+                'q' => Some(Pieces {
+                    piece_type: Queen,
+                    color,
+                }),
                 _ => None,
             }
         } else {
@@ -80,13 +92,7 @@ impl fmt::Display for GameMove1d {
             Some(piece) => piece.to_string().to_lowercase(),
             None => "".to_string(),
         };
-        write!(
-            f,
-            "{}{}{}",
-            to_str(self.start),
-            to_str(self.end),
-            promotion
-        )
+        write!(f, "{}{}{}", to_str(self.start), to_str(self.end), promotion)
     }
 }
 
@@ -130,7 +136,7 @@ pub(crate) fn to_str(num: usize) -> String {
 
 pub(crate) fn to_num(pos: &str) -> usize {
     let mut chars = pos.chars();
-    let col:usize = match chars.next().unwrap() {
+    let col: usize = match chars.next().unwrap() {
         'a' => 0,
         'b' => 1,
         'c' => 2,
@@ -162,36 +168,18 @@ mod tests {
 
     #[test]
     fn test_str_to_pos() {
-        assert_eq!(
-            to_num("a1"),
-            21
-        );
-        assert_eq!(
-            to_num("h8"),
-            98
-        );
-        assert_eq!(
-            to_num("e7"),
-            85
-        );
+        assert_eq!(to_num("a1"), 21);
+        assert_eq!(to_num("h8"), 98);
+        assert_eq!(to_num("e7"), 85);
     }
 
     #[test]
     fn test_pos_to_str() {
-        assert_eq!(
-            to_str(22),
-            "b1"
-        );
-        assert_eq!(
-            to_str(84),
-            "d7"
-        );
-        assert_eq!(
-            to_str(98),
-            "h8"
-        );
+        assert_eq!(to_str(22), "b1");
+        assert_eq!(to_str(84), "d7");
+        assert_eq!(to_str(98), "h8");
     }
-    
+
     #[test]
     fn test_str_to_game_move() {
         assert_eq!(
@@ -211,7 +199,10 @@ mod tests {
                 start: 81,
                 end: 91,
                 castle: None,
-                promote: Some(Pieces { piece_type: Queen, color: White }),
+                promote: Some(Pieces {
+                    piece_type: Queen,
+                    color: White
+                }),
                 passant: None,
                 capture: false,
             }
@@ -222,7 +213,10 @@ mod tests {
                 start: 34,
                 end: 24,
                 castle: None,
-                promote: Some(Pieces { piece_type: Knight, color: Black }),
+                promote: Some(Pieces {
+                    piece_type: Knight,
+                    color: Black
+                }),
                 passant: None,
                 capture: false,
             }
