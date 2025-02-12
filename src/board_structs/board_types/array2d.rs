@@ -296,7 +296,7 @@ impl board::Board for Array2D {
                 let piece = self.board[i][j];
                 match piece {
                     Pieces {
-                        piece_type: PieceTypes::Null,
+                        piece_type: PieceTypes::Offboard,
                         ..
                     } => continue,
                     Pieces {

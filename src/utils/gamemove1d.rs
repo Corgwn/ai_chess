@@ -4,14 +4,16 @@ use crate::utils::pieces::PieceTypes::{Bishop, Knight, Queen, Rook};
 use crate::utils::pieces::{PieceColors, Pieces};
 use std::fmt;
 
+use super::position::Position;
+
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
-pub struct GameMove1d {
-    pub start: usize,
-    pub end: usize,
-    pub castle: Option<CastleTypes>,
-    pub promote: Option<Pieces>,
-    pub passant: Option<PassantTypes>,
-    pub capture: bool,
+pub(crate) struct GameMove1d {
+    pub(crate) start: Position,
+    pub(crate) end: Position,
+    pub(crate) castle: Option<CastleTypes>,
+    pub(crate) promote: Option<Pieces>,
+    pub(crate) passant: Option<PassantTypes>,
+    pub(crate) capture: bool,
 }
 
 impl GameMove1d {
@@ -76,8 +78,8 @@ impl GameMove1d {
         println!("Castle: {:?}", castle);
 
         Ok(GameMove1d {
-            start,
-            end,
+            start: Position { value: start },
+            end: Position { value: end },
             castle,
             promote,
             passant: None,
@@ -92,7 +94,13 @@ impl fmt::Display for GameMove1d {
             Some(piece) => piece.to_string().to_lowercase(),
             None => "".to_string(),
         };
-        write!(f, "{}{}{}", to_str(self.start), to_str(self.end), promotion)
+        write!(
+            f,
+            "{}{}{}",
+            to_str(self.start.value),
+            to_str(self.end.value),
+            promotion
+        )
     }
 }
 
@@ -185,8 +193,8 @@ mod tests {
         assert_eq!(
             GameMove1d::from_str(&"e2e4").unwrap(),
             GameMove1d {
-                start: 35,
-                end: 55,
+                start: Position { value: 35 },
+                end: Position { value: 55 },
                 castle: None,
                 promote: None,
                 passant: None,
@@ -196,8 +204,8 @@ mod tests {
         assert_eq!(
             GameMove1d::from_str(&"a7a8q").unwrap(),
             GameMove1d {
-                start: 81,
-                end: 91,
+                start: Position { value: 81 },
+                end: Position { value: 91 },
                 castle: None,
                 promote: Some(Pieces {
                     piece_type: Queen,
@@ -210,8 +218,8 @@ mod tests {
         assert_eq!(
             GameMove1d::from_str(&"d2d1k").unwrap(),
             GameMove1d {
-                start: 34,
-                end: 24,
+                start: Position { value: 34 },
+                end: Position { value: 24 },
                 castle: None,
                 promote: Some(Pieces {
                     piece_type: Knight,

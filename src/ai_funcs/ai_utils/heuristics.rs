@@ -308,7 +308,7 @@ pub fn heuristic<T: crate::board_structs::board::Board>(game: T) -> i32 {
     for (piece, number) in piece_counts.iter() {
         match piece {
             Pieces {
-                piece_type: PieceTypes::Null,
+                piece_type: PieceTypes::Offboard,
                 ..
             } => {}
             Pieces {
