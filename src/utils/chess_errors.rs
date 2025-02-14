@@ -6,4 +6,6 @@ pub enum ChessError {
     MoveParseAlphaNumError,
     #[snafu(display("Move given is not correct length"))]
     MoveParseLengthError,
+    #[snafu(display("Invalid FEN String"))]
+    FENParseError,
 }

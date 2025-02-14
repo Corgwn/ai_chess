@@ -111,9 +111,9 @@ impl fmt::Debug for GameMove1d {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum PassantTypes {
-    PassantCapture(usize),
-    PassantAvailable(usize),
+pub(crate) enum PassantTypes {
+    PassantCapture(Position),
+    PassantAvailable(Position),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
