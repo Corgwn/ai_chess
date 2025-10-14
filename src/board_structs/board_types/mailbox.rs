@@ -1,12 +1,11 @@
 use std::isize;
 use std::sync::Arc;
 
-use crate::board_structs::board;
 use crate::utils::castling::CastleRights;
 use crate::utils::checks::Checks;
 use crate::utils::chess_errors::ChessError;
 use crate::utils::gamemove1d::{to_num, CastleTypes, GameMove1d, PassantTypes};
-use crate::utils::pieces::{self, PieceColors, PieceTypes, Pieces};
+use crate::utils::pieces::{PieceColors, PieceTypes, Pieces};
 use crate::utils::position::Position;
 
 const START_POSITION: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -26,6 +25,11 @@ const KNIGHT_OFFSETS: [i8; 8] = [-21, -19, -12, -8, 8, 12, 19, 21];
 const BISHOP_OFFSETS: [i8; 4] = [UL, UR, DL, DR];
 const ROOK_OFFSETS: [i8; 4] = [U, L, R, D];
 const QUEEN_OFFSETS: [i8; 8] = [UL, UR, DL, DR, U, L, R, D];
+
+const EMPTY_PIECE: Pieces = Pieces {
+    piece_type: PieceTypes::Empty,
+    color: PieceColors::Empty,
+};
 
 #[derive(Clone)]
 pub struct Mailbox {
@@ -61,7 +65,7 @@ impl Mailbox {
                 '/' => index += 2,
                 x if x.is_ascii_digit() => {
                     let num_empty = x.to_digit(10).unwrap() as usize;
-                    for i in 0..num_empty {
+                    for _i in 0..num_empty {
                         board_state[index] = Pieces {
                             piece_type: PieceTypes::Empty,
                             color: PieceColors::Empty,
@@ -187,7 +191,125 @@ impl Mailbox {
     }
 
     fn make_move(&self, mov: &GameMove1d) -> Self {
-        todo!()
+        let mut new_mailbox = self.clone();
+        let piece = new_mailbox.board[mov.start.value];
+        new_mailbox.board[mov.start.value] = EMPTY_PIECE;
+        new_mailbox.board[mov.end.value] = piece;
+        new_mailbox.curr_player = match new_mailbox.curr_player {
+            PieceColors::Black => PieceColors::White,
+            PieceColors::White => PieceColors::Black,
+            PieceColors::Empty => PieceColors::Empty,
+        };
+
+        // Check if it was a castle, and move rook accordingly
+        if let Some(castle_type) = mov.castle {
+            match castle_type {
+                CastleTypes::WhiteKing => {
+                    let temp = new_mailbox.board[28];
+                    new_mailbox.board[28] = EMPTY_PIECE;
+                    new_mailbox.board[26] = temp;
+                }
+                CastleTypes::WhiteQueen => {
+                    let temp = new_mailbox.board[21];
+                    new_mailbox.board[21] = EMPTY_PIECE;
+                    new_mailbox.board[25] = temp;
+                }
+                CastleTypes::BlackKing => {
+                    let temp = new_mailbox.board[98];
+                    new_mailbox.board[98] = EMPTY_PIECE;
+                    new_mailbox.board[96] = temp;
+                }
+                CastleTypes::BlackQueen => {
+                    let temp = new_mailbox.board[91];
+                    new_mailbox.board[91] = EMPTY_PIECE;
+                    new_mailbox.board[95] = temp;
+                }
+            }
+        };
+
+        // Check if it was a passant move and correct the board accordingly
+        if let Some(passant_type) = mov.passant {
+            match passant_type {
+                PassantTypes::PassantCapture(pos) => new_mailbox.board[pos.value] = EMPTY_PIECE,
+                PassantTypes::PassantAvailable(pos) => new_mailbox.en_passant = Some(pos),
+            }
+        };
+
+        // Check if promotion and change accordingly
+        if let Some(promotion) = mov.promote {
+            new_mailbox.board[mov.end.value] = promotion;
+        };
+
+        // Update King position if king moved
+        match piece {
+            Pieces {
+                piece_type: PieceTypes::King,
+                color: PieceColors::White,
+            } => new_mailbox.white_king = mov.end,
+            Pieces {
+                piece_type: PieceTypes::King,
+                color: PieceColors::Black,
+            } => new_mailbox.black_king = mov.end,
+            Pieces { .. } => {}
+        }
+
+        // Update who is in check
+        new_mailbox.check = verify_checks(
+            new_mailbox.board,
+            new_mailbox.white_king,
+            new_mailbox.black_king,
+        );
+
+        //Update castling rights
+        if new_mailbox.board[25].piece_type != PieceTypes::King
+            && new_mailbox.board[25].color != PieceColors::White
+        {
+            new_mailbox.castling_rights.white_king = false;
+            new_mailbox.castling_rights.white_queen = false;
+        }
+        if new_mailbox.board[95].piece_type != PieceTypes::King
+            && new_mailbox.board[95].color != PieceColors::Black
+        {
+            new_mailbox.castling_rights.black_king = false;
+            new_mailbox.castling_rights.black_queen = false;
+        }
+        if new_mailbox.board[21].piece_type != PieceTypes::Rook
+            && new_mailbox.board[21].color != PieceColors::White
+        {
+            new_mailbox.castling_rights.white_queen = false;
+        }
+        if new_mailbox.board[28].piece_type != PieceTypes::Rook
+            && new_mailbox.board[28].color != PieceColors::White
+        {
+            new_mailbox.castling_rights.white_king = false;
+        }
+        if new_mailbox.board[91].piece_type != PieceTypes::Rook
+            && new_mailbox.board[91].color != PieceColors::Black
+        {
+            new_mailbox.castling_rights.black_queen = false;
+        }
+        if new_mailbox.board[98].piece_type != PieceTypes::Rook
+            && new_mailbox.board[98].color != PieceColors::Black
+        {
+            new_mailbox.castling_rights.black_king = false;
+        }
+
+        //Update half moves
+        if mov.capture || piece.piece_type == PieceTypes::Pawn {
+            new_mailbox.half_moves = 0;
+        } else {
+            new_mailbox.half_moves += 1;
+        }
+        //Update full moves
+        if new_mailbox.curr_player == PieceColors::White {
+            new_mailbox.full_moves += 1
+        }
+
+        // Generate Attack Maps
+        (new_mailbox.white_attack_map, new_mailbox.black_attack_map) =
+            Mailbox::generate_attack_maps(new_mailbox.board);
+
+        return new_mailbox;
     }
 
     fn get_check(&self) -> Option<Checks> {
@@ -890,6 +1012,21 @@ impl Mailbox {
         }
 
         return (white_attack_map, black_attack_map);
+    }
+
+    fn get_prev(&self) -> Option<Arc<Mailbox>> {
+        return self.previous_state.as_ref().cloned();
+    }
+
+    fn backtrace(&self) {
+        self.print_info();
+        if let Some(ref prev) = self.previous_state {
+            prev.backtrace();
+        }
+    }
+
+    fn print_info(&self) {
+        todo!();
     }
 }
 
