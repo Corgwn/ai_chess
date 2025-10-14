@@ -18,3 +18,5 @@ id_test*
 *.data
 *.data.old
 *.svg
+
+result
