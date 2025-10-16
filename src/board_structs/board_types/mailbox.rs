@@ -1,4 +1,3 @@
-use std::isize;
 use std::sync::Arc;
 
 use crate::utils::castling::CastleRights;
@@ -187,7 +186,7 @@ impl Mailbox {
                 } => moves.extend(self.generate_pawn_moves(pos)),
             };
         }
-        return moves;
+        moves
     }
 
     fn make_move(&self, mov: &GameMove1d) -> Self {
@@ -309,7 +308,7 @@ impl Mailbox {
         (new_mailbox.white_attack_map, new_mailbox.black_attack_map) =
             Mailbox::generate_attack_maps(new_mailbox.board);
 
-        return new_mailbox;
+        new_mailbox
     }
 
     fn get_check(&self) -> Option<Checks> {
@@ -376,7 +375,7 @@ impl Mailbox {
                     castle: None,
                     promote: None,
                     passant: None,
-                    capture: capture,
+                    capture,
                 });
 
                 // Only loop if piece can slide
@@ -386,7 +385,7 @@ impl Mailbox {
             }
         }
 
-        return moves;
+        moves
     }
     fn generate_king_moves(&self, start: Position) -> Vec<GameMove1d> {
         let mut moves = vec![];
@@ -434,7 +433,7 @@ impl Mailbox {
                 castle: None,
                 promote: None,
                 passant: None,
-                capture: capture,
+                capture,
             });
         }
 
@@ -511,7 +510,7 @@ impl Mailbox {
             _ => {}
         }
 
-        return moves;
+        moves
     }
 
     fn generate_pawn_moves(&self, start: Position) -> Vec<GameMove1d> {
@@ -541,119 +540,117 @@ impl Mailbox {
                 .checked_add_signed(forward as isize)
                 .expect("Invalid position found"),
         };
-        match self.board[test_end.value] {
-            Pieces {
-                piece_type: PieceTypes::Empty,
-                color,
-            } => {
-                if self.verify_curr_player_check(&start, &test_end) {
-                    match test_end.value {
-                        21..=28 if color == PieceColors::Black => {
-                            moves.push(GameMove1d {
-                                start,
-                                end: test_end,
-                                castle: None,
-                                promote: Some(Pieces {
-                                    piece_type: PieceTypes::Queen,
-                                    color,
-                                }),
-                                passant: None,
-                                capture: false,
-                            });
-                            moves.push(GameMove1d {
-                                start: start,
-                                end: test_end,
-                                castle: None,
-                                promote: Some(Pieces {
-                                    piece_type: PieceTypes::Bishop,
-                                    color,
-                                }),
-                                passant: None,
-                                capture: false,
-                            });
-                            moves.push(GameMove1d {
-                                start,
-                                end: test_end,
-                                castle: None,
-                                promote: Some(Pieces {
-                                    piece_type: PieceTypes::Knight,
-                                    color,
-                                }),
-                                passant: None,
-                                capture: false,
-                            });
-                            moves.push(GameMove1d {
-                                start,
-                                end: test_end,
-                                castle: None,
-                                promote: Some(Pieces {
-                                    piece_type: PieceTypes::Rook,
-                                    color,
-                                }),
-                                passant: None,
-                                capture: false,
-                            });
-                        }
-                        91..=98 if color == PieceColors::White => {
-                            moves.push(GameMove1d {
-                                start,
-                                end: test_end,
-                                castle: None,
-                                promote: Some(Pieces {
-                                    piece_type: PieceTypes::Queen,
-                                    color,
-                                }),
-                                passant: None,
-                                capture: false,
-                            });
-                            moves.push(GameMove1d {
-                                start: start,
-                                end: test_end,
-                                castle: None,
-                                promote: Some(Pieces {
-                                    piece_type: PieceTypes::Bishop,
-                                    color,
-                                }),
-                                passant: None,
-                                capture: false,
-                            });
-                            moves.push(GameMove1d {
-                                start,
-                                end: test_end,
-                                castle: None,
-                                promote: Some(Pieces {
-                                    piece_type: PieceTypes::Knight,
-                                    color,
-                                }),
-                                passant: None,
-                                capture: false,
-                            });
-                            moves.push(GameMove1d {
-                                start,
-                                end: test_end,
-                                castle: None,
-                                promote: Some(Pieces {
-                                    piece_type: PieceTypes::Rook,
-                                    color,
-                                }),
-                                passant: None,
-                                capture: false,
-                            });
-                        }
-                        _ => {
-                            moves.push(GameMove1d {
-                                start,
-                                end: test_end,
-                                castle: None,
-                                promote: None,
-                                passant: None,
-                                capture: false,
-                            });
-                        }
+        if let Pieces {
+            piece_type: PieceTypes::Empty,
+            color,
+        } = self.board[test_end.value]
+        {
+            if self.verify_curr_player_check(&start, &test_end) {
+                match test_end.value {
+                    21..=28 if color == PieceColors::Black => {
+                        moves.push(GameMove1d {
+                            start,
+                            end: test_end,
+                            castle: None,
+                            promote: Some(Pieces {
+                                piece_type: PieceTypes::Queen,
+                                color,
+                            }),
+                            passant: None,
+                            capture: false,
+                        });
+                        moves.push(GameMove1d {
+                            start,
+                            end: test_end,
+                            castle: None,
+                            promote: Some(Pieces {
+                                piece_type: PieceTypes::Bishop,
+                                color,
+                            }),
+                            passant: None,
+                            capture: false,
+                        });
+                        moves.push(GameMove1d {
+                            start,
+                            end: test_end,
+                            castle: None,
+                            promote: Some(Pieces {
+                                piece_type: PieceTypes::Knight,
+                                color,
+                            }),
+                            passant: None,
+                            capture: false,
+                        });
+                        moves.push(GameMove1d {
+                            start,
+                            end: test_end,
+                            castle: None,
+                            promote: Some(Pieces {
+                                piece_type: PieceTypes::Rook,
+                                color,
+                            }),
+                            passant: None,
+                            capture: false,
+                        });
+                    }
+                    91..=98 if color == PieceColors::White => {
+                        moves.push(GameMove1d {
+                            start,
+                            end: test_end,
+                            castle: None,
+                            promote: Some(Pieces {
+                                piece_type: PieceTypes::Queen,
+                                color,
+                            }),
+                            passant: None,
+                            capture: false,
+                        });
+                        moves.push(GameMove1d {
+                            start,
+                            end: test_end,
+                            castle: None,
+                            promote: Some(Pieces {
+                                piece_type: PieceTypes::Bishop,
+                                color,
+                            }),
+                            passant: None,
+                            capture: false,
+                        });
+                        moves.push(GameMove1d {
+                            start,
+                            end: test_end,
+                            castle: None,
+                            promote: Some(Pieces {
+                                piece_type: PieceTypes::Knight,
+                                color,
+                            }),
+                            passant: None,
+                            capture: false,
+                        });
+                        moves.push(GameMove1d {
+                            start,
+                            end: test_end,
+                            castle: None,
+                            promote: Some(Pieces {
+                                piece_type: PieceTypes::Rook,
+                                color,
+                            }),
+                            passant: None,
+                            capture: false,
+                        });
+                    }
+                    _ => {
+                        moves.push(GameMove1d {
+                            start,
+                            end: test_end,
+                            castle: None,
+                            promote: None,
+                            passant: None,
+                            capture: false,
+                        });
                     }
                 }
             }
-            _ => {}
         }
 
         // Double Move if possible
@@ -669,19 +666,17 @@ impl Mailbox {
                 .checked_add_signed(forward as isize)
                 .expect("Invalid position found"),
         };
-        if self.board[test_half.value].piece_type == PieceTypes::Empty {
-            if self.board[test_half.value].piece_type == PieceTypes::Empty {
-                if self.verify_curr_player_check(&start, &test_end) {
-                    moves.push(GameMove1d {
-                        start: start,
-                        end: test_end,
-                        castle: None,
-                        promote: None,
-                        passant: Some(PassantTypes::PassantAvailable(test_half)),
-                        capture: false,
-                    });
-                }
-            }
+        if self.board[test_half.value].piece_type == PieceTypes::Empty
+            && self.verify_curr_player_check(&start, &test_end)
+        {
+            moves.push(GameMove1d {
+                start,
+                end: test_end,
+                castle: None,
+                promote: None,
+                passant: Some(PassantTypes::PassantAvailable(test_half)),
+                capture: false,
+            });
         }
 
         // Captures
@@ -718,7 +713,7 @@ impl Mailbox {
                                     capture: true,
                                 });
                                 moves.push(GameMove1d {
-                                    start: start,
+                                    start,
                                     end: test_end,
                                     castle: None,
                                     promote: Some(Pieces {
@@ -764,7 +759,7 @@ impl Mailbox {
                                     capture: true,
                                 });
                                 moves.push(GameMove1d {
-                                    start: start,
+                                    start,
                                     end: test_end,
                                     castle: None,
                                     promote: Some(Pieces {
@@ -813,7 +808,7 @@ impl Mailbox {
                 _ => {}
             }
         }
-        return moves;
+        moves
     }
 
     //
@@ -1011,11 +1006,11 @@ impl Mailbox {
             }
         }
 
-        return (white_attack_map, black_attack_map);
+        (white_attack_map, black_attack_map)
     }
 
     fn get_prev(&self) -> Option<Arc<Mailbox>> {
-        return self.previous_state.as_ref().cloned();
+        self.previous_state.as_ref().cloned()
     }
 
     fn backtrace(&self) {
@@ -1041,7 +1036,7 @@ fn verify_checks(
     if is_white_checked(board, white_king) {
         return Some(Checks::White);
     }
-    return None;
+    None
 }
 
 fn is_white_checked(board: [Pieces; 120], white_king: Position) -> bool {
@@ -1053,14 +1048,12 @@ fn is_white_checked(board: [Pieces; 120], white_king: Position) -> bool {
                 .checked_add_signed(offset as isize)
                 .expect("Invalid position found"),
         };
-        match board[test_pos.value] {
-            Pieces {
-                piece_type: PieceTypes::Knight,
-                color: PieceColors::Black,
-            } => {
-                return true;
-            }
-            _ => {}
+        if let Pieces {
+            piece_type: PieceTypes::Knight,
+            color: PieceColors::Black,
+        } = board[test_pos.value]
+        {
+            return true;
         }
     }
 
@@ -1140,18 +1133,16 @@ fn is_white_checked(board: [Pieces; 120], white_king: Position) -> bool {
                 .checked_add_signed(offset as isize)
                 .expect("Invalid position found"),
         };
-        match board[test_pos.value] {
-            Pieces {
-                piece_type: PieceTypes::Pawn,
-                color: PieceColors::Black,
-            } => {
-                return true;
-            }
-            _ => {}
+        if let Pieces {
+            piece_type: PieceTypes::Pawn,
+            color: PieceColors::Black,
+        } = board[test_pos.value]
+        {
+            return true;
         }
     }
 
-    return false;
+    false
 }
 
 fn is_black_checked(board: [Pieces; 120], black_king: Position) -> bool {
@@ -1163,14 +1154,12 @@ fn is_black_checked(board: [Pieces; 120], black_king: Position) -> bool {
                 .checked_add_signed(offset as isize)
                 .expect("Invalid position found"),
         };
-        match board[test_pos.value] {
-            Pieces {
-                piece_type: PieceTypes::Knight,
-                color: PieceColors::White,
-            } => {
-                return true;
-            }
-            _ => {}
+        if let Pieces {
+            piece_type: PieceTypes::Knight,
+            color: PieceColors::White,
+        } = board[test_pos.value]
+        {
+            return true;
         }
     }
 
@@ -1250,16 +1239,14 @@ fn is_black_checked(board: [Pieces; 120], black_king: Position) -> bool {
                 .checked_add_signed(offset as isize)
                 .expect("Invalid position found"),
         };
-        match board[test_pos.value] {
-            Pieces {
-                piece_type: PieceTypes::Pawn,
-                color: PieceColors::White,
-            } => {
-                return true;
-            }
-            _ => {}
+        if let Pieces {
+            piece_type: PieceTypes::Pawn,
+            color: PieceColors::White,
+        } = board[test_pos.value]
+        {
+            return true;
         }
     }
 
-    return false;
+    false
 }
