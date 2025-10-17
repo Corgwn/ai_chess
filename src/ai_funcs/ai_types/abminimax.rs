@@ -37,13 +37,13 @@ impl ABMinimax {
         loop {
             // Check if stop command received during last loop
             match rx.try_recv() {
-                Ok(x) if x == "stop" => break,
+                Ok("stop") => break,
                 Ok(_) => {}
                 Err(TryRecvError::Empty) => {}
                 Err(TryRecvError::Disconnected) => break,
             }
 
-            best_move = move_search(&game, depth, &valid_moves);
+            best_move = move_search(game, depth, &valid_moves);
             depth += 1;
 
             println!(
@@ -89,13 +89,13 @@ impl ABMinimax {
         while !out_of_time && depth <= max_depth {
             // Check if stop command received during last loop
             match rx.try_recv() {
-                Ok(x) if x == "stop" => break,
+                Ok("stop") => break,
                 Ok(_) => {}
                 Err(TryRecvError::Empty) => {}
                 Err(TryRecvError::Disconnected) => break,
             }
 
-            best_move = move_search(&game, depth, &valid_moves);
+            best_move = move_search(game, depth, &valid_moves);
             depth += 1;
 
             let this_iter_time = Instant::now();
