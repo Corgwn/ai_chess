@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use crate::ai_funcs::ai_utils::heuristics::{heuristic, is_terminal};
+use crate::ai_funcs::ai_utils::heuristics2d::{heuristic, is_terminal};
 use crate::board_structs::board::Board;
 use crate::utils::gamemove2d::GameMove2d;
 use crate::utils::pieces::WHITE;

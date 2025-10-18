@@ -3,7 +3,7 @@ use std::sync::mpsc::Sender;
 use std::thread;
 use std::thread::JoinHandle;
 
-use ai_funcs::ai_types::abminimax::ABMinimax;
+use ai_funcs::ai_types::abminimax2d::ABMinimax;
 use lazy_static::lazy_static;
 use regex::Regex;
 use utils::gamemove2d::GameMove2d;

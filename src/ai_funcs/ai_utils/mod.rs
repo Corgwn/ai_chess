@@ -1,1 +1,1 @@
-pub mod heuristics;
+pub mod heuristics2d;
