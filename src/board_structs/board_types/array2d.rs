@@ -1,6 +1,5 @@
 use crate::board_structs::board;
 use crate::board_structs::board::Board;
-use crate::utils::gamemove2d::to_let;
 use crate::utils::gamemove2d::to_num;
 use crate::utils::gamemove2d::CastleTypes;
 use crate::utils::gamemove2d::GameMove2d;
