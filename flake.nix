@@ -42,6 +42,7 @@
           pkgs.openssl
           pkgs.sqlite
           pkgs.gcc
+          pkgs.fastchess
         ];
 
         nativeBuildInputs = [

@@ -32,7 +32,7 @@ const EMPTY_PIECE: Pieces = Pieces {
 
 #[derive(Clone)]
 pub struct Mailbox {
-    board: [Pieces; 120],
+    pub(crate) board: [Pieces; 120],
     curr_player: PieceColors,
     //In order: white kingside, white queenside, black kingside, black queenside
     castling_rights: CastleRights,
@@ -49,7 +49,7 @@ pub struct Mailbox {
 }
 
 impl Mailbox {
-    fn setup_board(fen: Option<&str>) -> Result<Self, ChessError> {
+    pub(crate) fn setup_board(fen: Option<&str>) -> Result<Self, ChessError> {
         let mut fields = fen.unwrap_or(START_POSITION).split_ascii_whitespace();
         // Read board positions
         let board = fields.next().unwrap();
@@ -146,7 +146,7 @@ impl Mailbox {
         })
     }
 
-    fn get_valid_moves(&self) -> Vec<GameMove1d> {
+    pub(crate) fn get_valid_moves(&self) -> Vec<GameMove1d> {
         let mut moves = vec![];
         for (i, piece) in self.board.iter().enumerate() {
             let pos = Position { value: i };
@@ -189,7 +189,7 @@ impl Mailbox {
         moves
     }
 
-    fn make_move(&self, mov: &GameMove1d) -> Self {
+    pub(crate) fn make_move(&self, mov: &GameMove1d) -> Self {
         let mut new_mailbox = self.clone();
         let piece = new_mailbox.board[mov.start.value];
         new_mailbox.board[mov.start.value] = EMPTY_PIECE;
@@ -311,15 +311,15 @@ impl Mailbox {
         new_mailbox
     }
 
-    fn get_check(&self) -> Option<Checks> {
+    pub(crate) fn get_check(&self) -> Option<Checks> {
         self.check
     }
 
-    fn get_curr_player(&self) -> PieceColors {
+    pub(crate) fn get_curr_player(&self) -> PieceColors {
         self.curr_player
     }
 
-    fn get_castle_rights(&self) -> CastleRights {
+    pub(crate) fn get_castle_rights(&self) -> CastleRights {
         self.castling_rights
     }
 
@@ -1009,8 +1009,12 @@ impl Mailbox {
         (white_attack_map, black_attack_map)
     }
 
-    fn get_prev(&self) -> Option<Arc<Mailbox>> {
+    pub(crate) fn get_prev(&self) -> Option<Arc<Mailbox>> {
         self.previous_state.as_ref().cloned()
+    }
+
+    pub(crate) fn get_attack_maps(&self) -> (&[u8; 120], &[u8; 120]) {
+        (&self.white_attack_map, &self.black_attack_map)
     }
 
     fn backtrace(&self) {

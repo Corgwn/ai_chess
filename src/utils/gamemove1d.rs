@@ -1,4 +1,3 @@
-use crate::utils::chess_errors::ChessError;
 use crate::utils::pieces::PieceColors::{Black, White};
 use crate::utils::pieces::PieceTypes::{Bishop, Knight, Queen, Rook};
 use crate::utils::pieces::{PieceColors, Pieces};
@@ -17,13 +16,13 @@ pub(crate) struct GameMove1d {
 }
 
 impl GameMove1d {
-    pub(crate) fn from_str(input: &str) -> Result<Self, ChessError> {
-        if ![4 as usize, 5 as usize].contains(&input.len()) {
-            return Err(ChessError::MoveParseLengthError);
-        }
-        if !input.chars().all(char::is_alphanumeric) {
-            return Err(ChessError::MoveParseAlphaNumError);
-        }
+    pub(crate) fn from_str(input: &&str) -> Self {
+        // if ![4 as usize, 5 as usize].contains(&input.len()) {
+        //     return Err(ChessError::MoveParseLengthError);
+        // }
+        // if !input.chars().all(char::is_alphanumeric) {
+        //     return Err(ChessError::MoveParseAlphaNumError);
+        // }
         let squares = if input.len() == 4 {
             input.split_at(2)
         } else {
@@ -68,7 +67,7 @@ impl GameMove1d {
         };
         println!("Promotion: {:?}", promote);
         // Check for castle moves
-        let castle = match input {
+        let castle = match *input {
             "e1g1" => Some(CastleTypes::WhiteKing),
             "e1c1" => Some(CastleTypes::WhiteQueen),
             "e8g8" => Some(CastleTypes::BlackKing),
@@ -77,14 +76,14 @@ impl GameMove1d {
         };
         println!("Castle: {:?}", castle);
 
-        Ok(GameMove1d {
+        GameMove1d {
             start: Position { value: start },
             end: Position { value: end },
             castle,
             promote,
             passant: None,
             capture: false,
-        })
+        }
     }
 }
 
@@ -191,7 +190,7 @@ mod tests {
     #[test]
     fn test_str_to_game_move() {
         assert_eq!(
-            GameMove1d::from_str(&"e2e4").unwrap(),
+            GameMove1d::from_str(&"e2e4"),
             GameMove1d {
                 start: Position { value: 35 },
                 end: Position { value: 55 },
@@ -202,7 +201,7 @@ mod tests {
             }
         );
         assert_eq!(
-            GameMove1d::from_str(&"a7a8q").unwrap(),
+            GameMove1d::from_str(&"a7a8q"),
             GameMove1d {
                 start: Position { value: 81 },
                 end: Position { value: 91 },
@@ -216,7 +215,7 @@ mod tests {
             }
         );
         assert_eq!(
-            GameMove1d::from_str(&"d2d1k").unwrap(),
+            GameMove1d::from_str(&"d2d1k"),
             GameMove1d {
                 start: Position { value: 34 },
                 end: Position { value: 24 },

@@ -6,11 +6,13 @@ use std::thread::JoinHandle;
 use ai_funcs::ai_types::abminimax2d::ABMinimax;
 use lazy_static::lazy_static;
 use regex::Regex;
-use utils::gamemove2d::GameMove2d;
 
+use crate::ai_funcs::ai_types::negamax1d;
 use crate::board_structs::board::Board;
 use crate::board_structs::board_types::array2d::Array2D;
-use crate::utils::pieces::{BLACK, WHITE};
+use crate::board_structs::board_types::mailbox::Mailbox;
+use crate::utils::gamemove1d::GameMove1d;
+use crate::utils::pieces::{PieceColors, BLACK, WHITE};
 
 pub mod ai_funcs;
 pub mod board_structs;
@@ -21,13 +23,13 @@ struct Engine {
     transmit: Sender<&'static str>,
 }
 
-fn filter_uci_moves(args: &[&str]) -> Vec<GameMove2d> {
+fn filter_uci_moves(args: &[&str]) -> Vec<GameMove1d> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"[abcdefgh]\d[abcdefgh]\d[qrkb]?").unwrap();
     }
     args.iter()
         .filter(|x| RE.is_match(x))
-        .map(GameMove2d::from_str)
+        .map(GameMove1d::from_str)
         .collect()
 }
 
@@ -37,9 +39,9 @@ fn uci_engine() {
     println!("id author Corgwn");
 
     // Build Engine structs
-    let mut board = Array2D::setup_board(None);
+    let mut board = Mailbox::setup_board(None).unwrap();
     let mut engine_handle: Option<Engine> = None;
-    let mut move_count = 0;
+    let mut _move_count = 0;
 
     // Ready UCI terminal, and start command input
     println!("uciok");
@@ -52,26 +54,26 @@ fn uci_engine() {
             "setoption" => {}
             "register" => {}
             "ucinewgame" => {
-                board = Array2D::setup_board(None);
-                move_count = 0
+                board = Mailbox::setup_board(None).unwrap();
+                _move_count = 0
             }
             "position" if args.contains(&"startpos") => {
-                board = Array2D::setup_board(None);
-                move_count = 0;
+                board = Mailbox::setup_board(None).unwrap();
+                _move_count = 0;
                 if args.contains(&"moves") {
                     let x = filter_uci_moves(&args);
                     for input_move in x {
                         board = board.make_move(&input_move);
-                        move_count += 1;
+                        _move_count += 1;
                     }
                 }
             }
             "position" if args.contains(&"fen") => {
-                board = Array2D::setup_board(Some(args[2]));
+                board = Mailbox::setup_board(Some(args[2])).unwrap();
                 if args.contains(&"moves") {
                     for input_move in filter_uci_moves(&args) {
                         board = board.make_move(&input_move);
-                        move_count += 1;
+                        _move_count += 1;
                     }
                 }
             }
@@ -93,15 +95,23 @@ fn uci_engine() {
                     max_plies = Some(args[depth_index + 1].parse().unwrap());
                 }
 
+                // Parse max nodes
+                let mut max_nodes = None;
+                if let Some(max_nodes_index) = args.iter().position(|&r| r == "nodes") {
+                    max_nodes = Some(args[max_nodes_index + 1].parse().unwrap());
+                }
+
                 // Start engine and save thread handle to later join if needed
+                let game = board.clone();
                 let (tx, rx) = mpsc::channel();
                 let handle = thread::spawn(move || {
-                    let best_move = ABMinimax::uci_timed_find_move(
-                        &board,
+                    let best_move = negamax1d::MailboxNegamax::uci_find_move(
+                        game,
                         time_to_move,
-                        rx,
                         searchmoves,
                         max_plies,
+                        max_nodes,
+                        rx,
                     );
                     println!("bestmove {}", best_move)
                 });
@@ -119,9 +129,11 @@ fn uci_engine() {
                 };
 
                 // Start engine and save thread handle to later join if needed
+                let game = board.clone();
                 let (tx, rx) = mpsc::channel();
                 let handle = thread::spawn(move || {
-                    let best_move = ABMinimax::uci_infinite_find_move(&board, rx, searchmoves);
+                    let best_move =
+                        negamax1d::MailboxNegamax::uci_infinite_find_move(game, rx, searchmoves);
                     println!("bestmove {}", best_move)
                 });
                 engine_handle = Some(Engine {
@@ -132,19 +144,26 @@ fn uci_engine() {
             "go" => {
                 // Find time to move
                 // Get time remaining
-                let mut time_to_move = if !board.curr_move {
+                let time_remaining: u128 = if board.get_curr_player() == PieceColors::White {
                     let move_time_index = args.iter().position(|&r| r == "wtime").unwrap();
                     args[move_time_index + 1].parse().unwrap()
                 } else {
                     let move_time_index = args.iter().position(|&r| r == "btime").unwrap();
                     args[move_time_index + 1].parse().unwrap()
                 };
-                // Calculate time to search
-                if move_count < 30 {
-                    time_to_move /= 30 - move_count;
+                let increment: u128 = if board.get_curr_player() == PieceColors::White
+                    && args.contains(&"winc")
+                {
+                    let increment_index = args.iter().position(|&r| r == "winc").unwrap();
+                    args[increment_index + 1].parse().unwrap()
+                } else if board.get_curr_player() == PieceColors::Black && args.contains(&"binc") {
+                    let increment_index = args.iter().position(|&r| r == "binc").unwrap();
+                    args[increment_index + 1].parse().unwrap()
                 } else {
-                    time_to_move /= 10;
-                }
+                    0
+                };
+                // Calculate time to search
+                let time_to_move = time_remaining / 20 + increment / 2;
 
                 // Parse searchmoves
                 let searchmoves = if args.contains(&"searchmoves") {
@@ -159,15 +178,23 @@ fn uci_engine() {
                     max_plies = Some(args[depth_index + 1].parse().unwrap());
                 }
 
+                // Parse max nodes
+                let mut max_nodes = None;
+                if let Some(max_nodes_index) = args.iter().position(|&r| r == "nodes") {
+                    max_nodes = Some(args[max_nodes_index + 1].parse().unwrap());
+                }
+
                 // Start engine and save thread handle to later join if needed
+                let game = board.clone();
                 let (tx, rx) = mpsc::channel();
                 let handle = thread::spawn(move || {
-                    let best_move = ABMinimax::uci_timed_find_move(
-                        &board,
+                    let best_move = negamax1d::MailboxNegamax::uci_find_move(
+                        game,
                         time_to_move,
-                        rx,
                         searchmoves,
                         max_plies,
+                        max_nodes,
+                        rx,
                     );
                     println!("bestmove {}", best_move)
                 });
@@ -185,6 +212,7 @@ fn uci_engine() {
                     engine_handle = None;
                 }
             }
+            "ponder" => {}
             "ponderhit" => {}
             "quit" => break,
             _ => {}
