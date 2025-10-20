@@ -95,7 +95,7 @@ impl fmt::Display for GameMove2d {
 
 impl fmt::Debug for GameMove2d {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(f, "{}", self)
     }
 }
 

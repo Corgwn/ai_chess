@@ -105,7 +105,7 @@ impl fmt::Display for GameMove1d {
 
 impl fmt::Debug for GameMove1d {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(f, "{}", self)
     }
 }
 
@@ -138,7 +138,7 @@ pub(crate) fn to_str(num: usize) -> String {
         8 => 'h',
         _ => panic!(),
     };
-    return col_char.to_string() + &row.to_string();
+    col_char.to_string() + &row.to_string()
 }
 
 pub(crate) fn to_num(pos: &str) -> usize {
