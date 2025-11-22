@@ -1,18 +1,16 @@
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
-use std::thread;
 use std::thread::JoinHandle;
+use std::{thread, time};
 
-use ai_funcs::ai_types::abminimax2d::ABMinimax;
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::ai_funcs::ai_types::negamax1d;
-use crate::board_structs::board::Board;
-use crate::board_structs::board_types::array2d::Array2D;
+use crate::ai_funcs::ai_types::manual;
+use crate::ai_funcs::ai_types::negamax1d::{self, MailboxNegamax};
 use crate::board_structs::board_types::mailbox::Mailbox;
 use crate::utils::gamemove1d::GameMove1d;
-use crate::utils::pieces::{PieceColors, BLACK, WHITE};
+use crate::utils::pieces::{PieceColors, PieceTypes, Pieces, BLACK, WHITE};
 
 pub mod ai_funcs;
 pub mod board_structs;
@@ -105,7 +103,7 @@ fn uci_engine() {
                 let game = board.clone();
                 let (tx, rx) = mpsc::channel();
                 let handle = thread::spawn(move || {
-                    let best_move = negamax1d::MailboxNegamax::uci_find_move(
+                    negamax1d::MailboxNegamax::uci_find_move(
                         game,
                         time_to_move,
                         searchmoves,
@@ -113,7 +111,6 @@ fn uci_engine() {
                         max_nodes,
                         rx,
                     );
-                    println!("bestmove {}", best_move)
                 });
                 engine_handle = Some(Engine {
                     handle,
@@ -132,9 +129,7 @@ fn uci_engine() {
                 let game = board.clone();
                 let (tx, rx) = mpsc::channel();
                 let handle = thread::spawn(move || {
-                    let best_move =
-                        negamax1d::MailboxNegamax::uci_infinite_find_move(game, rx, searchmoves);
-                    println!("bestmove {}", best_move)
+                    negamax1d::MailboxNegamax::uci_infinite_find_move(game, rx, searchmoves);
                 });
                 engine_handle = Some(Engine {
                     handle,
@@ -188,7 +183,7 @@ fn uci_engine() {
                 let game = board.clone();
                 let (tx, rx) = mpsc::channel();
                 let handle = thread::spawn(move || {
-                    let best_move = negamax1d::MailboxNegamax::uci_find_move(
+                    negamax1d::MailboxNegamax::uci_find_move(
                         game,
                         time_to_move,
                         searchmoves,
@@ -196,7 +191,6 @@ fn uci_engine() {
                         max_nodes,
                         rx,
                     );
-                    println!("bestmove {}", best_move)
                 });
                 engine_handle = Some(Engine {
                     handle,
@@ -221,30 +215,78 @@ fn uci_engine() {
 }
 
 fn run_sample_game() {
-    let mut game = Array2D::setup_board(None);
-    let player1 = ABMinimax {};
-    let player2 = ABMinimax {};
+    let mut game = Mailbox::setup_board(None).unwrap();
 
     let mut turn_num: usize = 0;
+    let mut white_time: u128 = 60000;
+    let mut black_time: u128 = 60000;
+    let inc: u128 = 600;
+    println!("Game starting!");
+    println!("{}", game);
     while !game.get_valid_moves().is_empty() {
         let turn: bool = (turn_num % 2) != 0;
-        let next_move = match turn {
-            WHITE => player1.find_move(game, WHITE, 30000000000),
-            BLACK => player2.find_move(game, BLACK, 30000000000),
-        };
-
         let turn_color = match turn {
             WHITE => "WHITE",
             BLACK => "BLACK",
         };
 
+        let turn_start = time::Instant::now();
+        let search_time = if turn_color == "WHITE" {
+            white_time / 20 + inc / 2
+        } else {
+            black_time / 20 + inc / 2
+        };
+        let (_tx, rx) = mpsc::channel();
+        println!(
+            "Starting search for player {}, searching for {}ms",
+            turn_color, search_time
+        );
+        let next_move =
+            MailboxNegamax::uci_find_move(game.clone(), search_time, None, None, None, rx);
+        let turn_duration = turn_start.elapsed().as_millis();
+
+        if turn_color == "WHITE" {
+            if white_time.checked_sub(turn_duration).is_some() {
+                white_time = white_time + inc - turn_duration;
+            } else {
+                println!("White has run out of time, Black has won on time.");
+                break;
+            }
+        } else if black_time.checked_sub(turn_duration).is_some() {
+            black_time = black_time + inc - turn_duration;
+        } else {
+            println!("Black has run out of time, White has won on time.");
+            break;
+        }
+
         turn_num += 1;
         game = game.make_move(&next_move);
         println!(
-            "\nTurn number: {} | Player: {} | Move: {}\n",
-            turn_num, turn_color, next_move
+            "\nTurn number: {turn_num} | Player: {turn_color} | Move: {next_move} | wtime: {white_time} | btime: {black_time} | inc: {inc}\n",
         );
-        print_board(&game);
+        println!("{}", game);
+    }
+}
+fn run_manual_game() {
+    let mut game = Mailbox::setup_board(None).unwrap();
+
+    let mut turn_num: usize = 0;
+    println!("Game starting!");
+    println!("{}", game);
+    while !game.get_valid_moves().is_empty() {
+        let turn: bool = (turn_num % 2) != 0;
+        let turn_color = match turn {
+            WHITE => "WHITE",
+            BLACK => "BLACK",
+        };
+
+        println!("Starting search for player {}", turn_color);
+        let next_move = manual::Manual::find_move_1d();
+
+        turn_num += 1;
+        game = game.make_move(&next_move);
+        println!("\nTurn number: {turn_num} | Player: {turn_color} | Move: {next_move}\n",);
+        println!("{}", game);
     }
 }
 
@@ -259,23 +301,15 @@ fn main() {
                 break;
             }
             "man" => {
+                run_manual_game();
+                break;
+            }
+            "sample" => {
                 run_sample_game();
                 break;
             }
             "quit" => break,
             _ => println!("Engine type not supported"),
         }
-    }
-}
-
-fn print_board<T: Board>(game: &T) {
-    let board = game.get_board_as_2d();
-    println!("-----------------");
-    for row in board.iter().rev() {
-        print!("|");
-        for col in row {
-            print!("{}|", col);
-        }
-        println!("\n-----------------");
     }
 }

@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, ops::Neg};
 
 pub(crate) const WHITE: bool = false;
 pub(crate) const BLACK: bool = true;
@@ -20,6 +20,18 @@ pub enum PieceColors {
     Black,
     White,
     Empty,
+}
+
+impl Neg for PieceColors {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        match self {
+            PieceColors::Black => PieceColors::White,
+            PieceColors::White => PieceColors::Black,
+            PieceColors::Empty => PieceColors::Empty,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
@@ -145,7 +157,15 @@ impl fmt::Display for Pieces {
                 piece_type: PieceTypes::Pawn,
                 color: PieceColors::White,
             } => "P",
-            _ => " ",
+            Pieces {
+                piece_type: PieceTypes::Offboard,
+                ..
+            } => "O",
+            Pieces {
+                piece_type: PieceTypes::Empty,
+                ..
+            } => " ",
+            _ => "",
         };
         write!(f, "{}", piece)
     }

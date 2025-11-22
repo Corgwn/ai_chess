@@ -1,4 +1,4 @@
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct CastleRights {
     pub white_king: bool,
     pub white_queen: bool,

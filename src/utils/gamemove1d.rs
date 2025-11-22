@@ -124,7 +124,7 @@ pub enum CastleTypes {
 }
 
 pub(crate) fn to_str(num: usize) -> String {
-    let temp = num - 20;
+    let temp = num.checked_sub(20).unwrap();
     let row = (temp / 10) + 1;
     let col = temp.rem_euclid(10);
     let col_char = match col {

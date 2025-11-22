@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use std::sync::mpsc::Receiver;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::board_structs::board_types::mailbox::Mailbox;
 use crate::utils::checks::Checks;
@@ -18,9 +18,17 @@ impl MailboxNegamax {
     ) -> GameMove1d {
         let start_time = Instant::now();
         let mut best_move: GameMove1d;
+        let mut best_score: i32;
         let mut depth: usize = 1;
 
-        best_move = root_nega_max(&game, depth, available_moves.clone());
+        (best_move, best_score) = root_nega_max(&game, depth, available_moves.clone());
+        println!(
+            "info depth {} pv {} score cp {} time {}",
+            depth,
+            best_move,
+            best_score,
+            start_time.elapsed().as_millis(),
+        );
         depth += 1;
 
         loop {
@@ -31,17 +39,18 @@ impl MailboxNegamax {
                 Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
             }
 
-            best_move = root_nega_max(&game, depth, available_moves.clone());
-            depth += 1;
-
+            (best_move, best_score) = root_nega_max(&game, depth, available_moves.clone());
             println!(
-                "info depth {} pv {} time {}",
+                "info depth {} pv {} score cp {} time {}",
                 depth,
                 best_move,
+                best_score,
                 start_time.elapsed().as_millis(),
-            )
+            );
+            depth += 1;
         }
 
+        println!("bestmove {}", best_move);
         best_move
     }
     pub(crate) fn uci_find_move(
@@ -54,14 +63,28 @@ impl MailboxNegamax {
     ) -> GameMove1d {
         let start_time = Instant::now();
         let mut elapsed_time;
+        let mut last_elapsed_time;
+        let mut elapsed_ratio;
         let mut best_move: GameMove1d;
+        let mut best_score: i32;
         let mut depth: usize = 1;
 
-        best_move = root_nega_max(&game, depth, available_moves.clone());
+        (best_move, best_score) = root_nega_max(&game, depth, available_moves.clone());
+        println!(
+            "info depth {} pv {} score cp {} time {} ",
+            depth,
+            best_move,
+            best_score,
+            start_time.elapsed().as_millis(),
+        );
         depth += 1;
+        last_elapsed_time = Duration::from_millis(1);
         elapsed_time = start_time.elapsed();
+        elapsed_ratio = elapsed_time.as_nanos() / last_elapsed_time.as_nanos();
 
-        while elapsed_time.as_millis() < search_time || depth < max_plies.unwrap_or(usize::MAX) {
+        while elapsed_time.as_millis() * elapsed_ratio < search_time
+            && depth < max_plies.unwrap_or(usize::MAX)
+        {
             match rx.try_recv() {
                 Ok("stop") => break,
                 Ok(_) => {}
@@ -69,18 +92,21 @@ impl MailboxNegamax {
                 Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
             }
 
-            best_move = root_nega_max(&game, depth, available_moves.clone());
-            depth += 1;
-            elapsed_time = start_time.elapsed();
-
+            (best_move, best_score) = root_nega_max(&game, depth, available_moves.clone());
             println!(
-                "info depth {} pv {} time {}",
+                "info depth {} pv {} score cp {} time {} ",
                 depth,
                 best_move,
+                best_score,
                 start_time.elapsed().as_millis(),
-            )
+            );
+            depth += 1;
+            last_elapsed_time = elapsed_time;
+            elapsed_time = start_time.elapsed();
+            elapsed_ratio = elapsed_time.as_nanos() / last_elapsed_time.as_nanos();
         }
 
+        println!("bestmove {}", best_move);
         best_move
     }
     pub(crate) fn uci_search_mate(
@@ -102,7 +128,7 @@ fn root_nega_max(
     game: &Mailbox,
     depth: usize,
     available_moves: Option<Vec<GameMove1d>>,
-) -> GameMove1d {
+) -> (GameMove1d, i32) {
     let valid_moves = available_moves.unwrap_or_else(|| game.get_valid_moves());
     let mut max_score = i32::MIN;
     let mut best_move = valid_moves[0];
@@ -113,7 +139,7 @@ fn root_nega_max(
             best_move = mv;
         }
     }
-    best_move
+    (best_move, max_score)
 }
 
 fn nega_max(game: Mailbox, depth: usize) -> i32 {
@@ -121,7 +147,7 @@ fn nega_max(game: Mailbox, depth: usize) -> i32 {
     if depth == 0 {
         return evaluate(game, valid_moves);
     }
-    let mut max = i32::MIN;
+    let mut max = i32::MIN + 1;
     for game_move in valid_moves {
         let new_game = game.make_move(&game_move);
         let score = -nega_max(new_game, depth - 1);
@@ -141,12 +167,12 @@ fn evaluate(game: Mailbox, valid_moves: Vec<GameMove1d>) -> i32 {
                 if game.get_curr_player() == PieceColors::Black {
                     return i32::MAX;
                 } else if game.get_curr_player() == PieceColors::White {
-                    return i32::MIN;
+                    return i32::MIN + 1;
                 }
             }
             Some(Checks::Black) => {
                 if game.get_curr_player() == PieceColors::Black {
-                    return i32::MIN;
+                    return i32::MIN + 1;
                 } else if game.get_curr_player() == PieceColors::White {
                     return i32::MAX;
                 }
