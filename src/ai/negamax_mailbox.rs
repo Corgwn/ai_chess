@@ -2,7 +2,7 @@
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
-use crate::board_structs::board_types::mailbox::Mailbox;
+use crate::board::mailbox::Mailbox;
 use crate::utils::checks::Checks;
 use crate::utils::gamemove1d::GameMove1d;
 use crate::utils::pieces::{PieceColors, PieceTypes, Pieces};
@@ -158,6 +158,40 @@ fn nega_max(game: Mailbox, depth: usize) -> i32 {
     max
 }
 
+fn is_repetition(game1: &Mailbox, game2: &Mailbox) -> bool {
+    let mut is_rep = true;
+    if game1.board != game2.board {
+        is_rep = false;
+    }
+    if game1.get_castle_rights() != game2.get_castle_rights() {
+        is_rep = false;
+    }
+    if game1.en_passant != game2.en_passant {
+        is_rep = false;
+    }
+    is_rep
+}
+
+fn check_draws(game: &Mailbox) -> bool {
+    let mut is_draw = false;
+
+    // 3-fold repetition
+    if game.full_moves > 4 {
+        let ply2_back = game.get_prev().unwrap().get_prev().unwrap();
+        let ply4_back = ply2_back.get_prev().unwrap().get_prev().unwrap();
+        if is_repetition(game, &ply2_back) && is_repetition(game, &ply4_back) {
+            is_draw = true;
+        }
+    }
+
+    // 50-move rule
+    if game.half_moves >= 100 {
+        is_draw = true;
+    }
+
+    is_draw
+}
+
 fn evaluate(game: Mailbox, valid_moves: Vec<GameMove1d>) -> i32 {
     // Check if game is terminal
     if valid_moves.is_empty() {
@@ -180,6 +214,9 @@ fn evaluate(game: Mailbox, valid_moves: Vec<GameMove1d>) -> i32 {
             None => return 0,
         }
     }
+    if check_draws(&game) {
+        return 0;
+    }
     // Game is not terminal, get heuristic of the game
     let mut curr_player_value: i32 = 0;
     game.board.iter().enumerate().for_each(|(index, piece)| {
@@ -189,6 +226,22 @@ fn evaluate(game: Mailbox, valid_moves: Vec<GameMove1d>) -> i32 {
             curr_player_value -= get_piece_value(piece, Position { value: index })
         }
     });
+
+    let castles = game.get_castle_rights();
+    if game.get_curr_player() == PieceColors::White {
+        curr_player_value += i32::from(castles.white_king) * 50;
+        curr_player_value += i32::from(castles.white_queen) * 40;
+    } else {
+        curr_player_value -= i32::from(castles.white_king) * 50;
+        curr_player_value -= i32::from(castles.white_queen) * 40;
+    }
+    if game.get_curr_player() == PieceColors::Black {
+        curr_player_value += i32::from(castles.black_king) * 50;
+        curr_player_value += i32::from(castles.black_queen) * 40;
+    } else {
+        curr_player_value -= i32::from(castles.black_king) * 50;
+        curr_player_value -= i32::from(castles.black_queen) * 40;
+    }
 
     curr_player_value
 }

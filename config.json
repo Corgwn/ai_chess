@@ -58,7 +58,7 @@
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 13008485313356296028,
+    "seed": 573236151812068258,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
@@ -125,5 +125,28 @@
             "variant": 0
         }
     ],
-    "stats": null
+    "stats": {
+        "Engine2 vs Engine1": {
+            "wins": 19,
+            "losses": 19,
+            "draws": 0,
+            "penta_WW": 0,
+            "penta_WD": 0,
+            "penta_WL": 19,
+            "penta_DD": 0,
+            "penta_LD": 0,
+            "penta_LL": 0
+        },
+        "Engine1 vs Engine2": {
+            "wins": 6,
+            "losses": 6,
+            "draws": 0,
+            "penta_WW": 0,
+            "penta_WD": 0,
+            "penta_WL": 6,
+            "penta_DD": 0,
+            "penta_LD": 0,
+            "penta_LL": 0
+        }
+    }
 }

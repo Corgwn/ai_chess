@@ -43,13 +43,13 @@ pub struct Mailbox {
     curr_player: PieceColors,
     castling_rights: CastleRights,
     //None if no en passant is possible, Some if possible by taking the position given with a pawn
-    en_passant: Option<Position>,
-    half_moves: u8,
-    full_moves: u8,
+    pub(crate) en_passant: Option<Position>,
+    pub(crate) half_moves: u8,
+    pub(crate) full_moves: u8,
     check: Option<Checks>,
     white_king: Position,
     black_king: Position,
-    previous_state: Option<Arc<Mailbox>>,
+    pub(crate) previous_state: Option<Arc<Mailbox>>,
     black_attack_map: [u8; 120],
     white_attack_map: [u8; 120],
 }
@@ -58,7 +58,7 @@ impl std::fmt::Display for Mailbox {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut board_string = String::new();
         let mut placed_count: usize = 0;
-        board_string.extend("-----------------\n".chars());
+        board_string.push_str("-----------------\n");
         for piece in self.board.iter() {
             match piece {
                 Pieces {
@@ -67,14 +67,14 @@ impl std::fmt::Display for Mailbox {
                 } => continue,
                 _ => {
                     if placed_count.rem_euclid(8) == 0 && placed_count != 0 {
-                        board_string.extend("|\n-----------------\n".chars());
+                        board_string.push_str("|\n-----------------\n");
                     }
                     board_string.extend(format!("|{piece}").chars());
                     placed_count += 1;
                 }
             }
         }
-        board_string.extend("|\n-----------------\n".chars());
+        board_string.push_str("|\n-----------------\n");
         write!(f, "{}", board_string)
     }
 }
@@ -226,6 +226,7 @@ impl Mailbox {
 
     pub(crate) fn make_move(&self, mov: &GameMove1d) -> Self {
         let mut new_mailbox = self.clone();
+        let mut irreversible = false;
         let piece = new_mailbox.board[mov.start.value];
         new_mailbox.board[mov.start.value] = EMPTY_PIECE;
         new_mailbox.board[mov.end.value] = piece;
@@ -233,6 +234,7 @@ impl Mailbox {
 
         // Check if it was a castle, and move rook accordingly
         if let Some(castle_type) = mov.castle {
+            irreversible = true;
             match castle_type {
                 CastleTypes::WhiteKing => {
                     let temp = new_mailbox.board[28];
@@ -259,6 +261,7 @@ impl Mailbox {
 
         // Check if it was a passant move and correct the board accordingly
         if let Some(passant_type) = mov.passant {
+            irreversible = true;
             match passant_type {
                 PassantTypes::PassantCapture(pos) => new_mailbox.board[pos.value] = EMPTY_PIECE,
                 PassantTypes::PassantAvailable(pos) => new_mailbox.en_passant = Some(pos),
@@ -267,6 +270,7 @@ impl Mailbox {
 
         // Check if promotion and change accordingly
         if let Some(promotion) = mov.promote {
+            irreversible = true;
             new_mailbox.board[mov.end.value] = promotion;
         };
 
@@ -290,47 +294,64 @@ impl Mailbox {
             new_mailbox.black_king,
         );
 
-        //Update castling rights
-        if new_mailbox.board[25].piece_type != PieceTypes::King
-            && new_mailbox.board[25].color != PieceColors::White
-        {
-            new_mailbox.castling_rights.white_king = false;
-            new_mailbox.castling_rights.white_queen = false;
-        }
-        if new_mailbox.board[95].piece_type != PieceTypes::King
-            && new_mailbox.board[95].color != PieceColors::Black
-        {
-            new_mailbox.castling_rights.black_king = false;
-            new_mailbox.castling_rights.black_queen = false;
-        }
-        if new_mailbox.board[21].piece_type != PieceTypes::Rook
-            && new_mailbox.board[21].color != PieceColors::White
-        {
-            new_mailbox.castling_rights.white_queen = false;
-        }
-        if new_mailbox.board[28].piece_type != PieceTypes::Rook
-            && new_mailbox.board[28].color != PieceColors::White
-        {
-            new_mailbox.castling_rights.white_king = false;
-        }
-        if new_mailbox.board[91].piece_type != PieceTypes::Rook
-            && new_mailbox.board[91].color != PieceColors::Black
-        {
-            new_mailbox.castling_rights.black_queen = false;
-        }
-        if new_mailbox.board[98].piece_type != PieceTypes::Rook
-            && new_mailbox.board[98].color != PieceColors::Black
-        {
-            new_mailbox.castling_rights.black_king = false;
+        // Update castling rights
+        match piece {
+            Pieces {
+                piece_type: PieceTypes::King,
+                color: PieceColors::White,
+            } => {
+                if self.castling_rights.white_king || self.castling_rights.white_queen {
+                    irreversible = true;
+                    new_mailbox.castling_rights.white_king = false;
+                    new_mailbox.castling_rights.white_queen = false;
+                }
+            }
+            Pieces {
+                piece_type: PieceTypes::King,
+                color: PieceColors::Black,
+            } => {
+                if self.castling_rights.black_king || self.castling_rights.black_queen {
+                    irreversible = true;
+                    new_mailbox.castling_rights.black_king = false;
+                    new_mailbox.castling_rights.black_queen = false;
+                }
+            }
+            Pieces {
+                piece_type: PieceTypes::Rook,
+                color: PieceColors::White,
+            } => {
+                if self.castling_rights.white_king && mov.start.value == 28 {
+                    irreversible = false;
+                    new_mailbox.castling_rights.white_king = false;
+                }
+                if self.castling_rights.white_queen && mov.start.value == 21 {
+                    irreversible = false;
+                    new_mailbox.castling_rights.white_queen = false;
+                }
+            }
+            Pieces {
+                piece_type: PieceTypes::Rook,
+                color: PieceColors::Black,
+            } => {
+                if self.castling_rights.black_king && mov.start.value == 98 {
+                    irreversible = false;
+                    new_mailbox.castling_rights.black_king = false;
+                }
+                if self.castling_rights.black_queen && mov.start.value == 91 {
+                    irreversible = false;
+                    new_mailbox.castling_rights.black_queen = false;
+                }
+            }
+            _ => {}
         }
 
-        //Update half moves
-        if mov.capture || piece.piece_type == PieceTypes::Pawn {
+        // Update half moves
+        if irreversible || piece.piece_type == PieceTypes::Pawn {
             new_mailbox.half_moves = 0;
         } else {
             new_mailbox.half_moves += 1;
         }
-        //Update full moves
+        // Update full moves
         if new_mailbox.curr_player == PieceColors::White {
             new_mailbox.full_moves += 1
         }
@@ -338,6 +359,9 @@ impl Mailbox {
         // Generate Attack Maps
         (new_mailbox.white_attack_map, new_mailbox.black_attack_map) =
             Mailbox::generate_attack_maps(new_mailbox.board);
+
+        // Add link to current board state
+        new_mailbox.previous_state = Some(Arc::new(self.clone()));
 
         new_mailbox
     }
@@ -1109,4 +1133,33 @@ fn is_black_checked(board: [Pieces; 120], black_king: Position) -> bool {
 fn can_promote(test_pos: Position, curr_player: PieceColors) -> bool {
     ((21..=28).contains(&test_pos.value) && curr_player == PieceColors::Black)
         || ((91..=98).contains(&test_pos.value) && curr_player == PieceColors::White)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn perft(depth: usize, game: Mailbox) -> usize {
+        let mut nodes: usize = 0;
+        let moves = game.get_valid_moves();
+
+        if depth == 1 {
+            return moves.len();
+        }
+
+        for mov in moves {
+            let new_game = game.make_move(&mov);
+            nodes += perft(depth - 1, new_game);
+        }
+
+        nodes
+    }
+
+    #[test]
+    fn run_perft() {
+        let depth: usize = 5;
+        let game = Mailbox::setup_board(None).unwrap();
+        let nodes_searched = perft(depth, game);
+        println!("Nodes searched: {}", nodes_searched);
+    }
 }

@@ -1,5 +1,4 @@
-use crate::board_structs::board;
-use crate::board_structs::board::Board;
+use crate::utils::gamemove2d::to_let;
 use crate::utils::gamemove2d::to_num;
 use crate::utils::gamemove2d::CastleTypes;
 use crate::utils::gamemove2d::GameMove2d;
@@ -193,7 +192,7 @@ impl Array2D {
     }
 }
 
-impl board::Board for Array2D {
+impl Array2D {
     fn setup_board(fen: Option<&str>) -> Self {
         let mut fields = fen.unwrap_or(START_POSITION).split_ascii_whitespace();
         //Read board positions

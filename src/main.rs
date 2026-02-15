@@ -6,14 +6,14 @@ use std::{thread, time};
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::ai_funcs::ai_types::manual;
-use crate::ai_funcs::ai_types::negamax1d::{self, MailboxNegamax};
-use crate::board_structs::board_types::mailbox::Mailbox;
+use crate::ai::manual;
+use crate::ai::negamax_mailbox::MailboxNegamax;
+use crate::board::mailbox::Mailbox;
 use crate::utils::gamemove1d::GameMove1d;
-use crate::utils::pieces::{PieceColors, PieceTypes, Pieces, BLACK, WHITE};
+use crate::utils::pieces::{PieceColors, BLACK, WHITE};
 
-pub mod ai_funcs;
-pub mod board_structs;
+pub mod ai;
+pub mod board;
 pub mod utils;
 
 struct Engine {
@@ -103,7 +103,7 @@ fn uci_engine() {
                 let game = board.clone();
                 let (tx, rx) = mpsc::channel();
                 let handle = thread::spawn(move || {
-                    negamax1d::MailboxNegamax::uci_find_move(
+                    MailboxNegamax::uci_find_move(
                         game,
                         time_to_move,
                         searchmoves,
@@ -129,7 +129,7 @@ fn uci_engine() {
                 let game = board.clone();
                 let (tx, rx) = mpsc::channel();
                 let handle = thread::spawn(move || {
-                    negamax1d::MailboxNegamax::uci_infinite_find_move(game, rx, searchmoves);
+                    MailboxNegamax::uci_infinite_find_move(game, rx, searchmoves);
                 });
                 engine_handle = Some(Engine {
                     handle,
@@ -183,7 +183,7 @@ fn uci_engine() {
                 let game = board.clone();
                 let (tx, rx) = mpsc::channel();
                 let handle = thread::spawn(move || {
-                    negamax1d::MailboxNegamax::uci_find_move(
+                    MailboxNegamax::uci_find_move(
                         game,
                         time_to_move,
                         searchmoves,
@@ -224,7 +224,7 @@ fn run_sample_game() {
     println!("Game starting!");
     println!("{}", game);
     while !game.get_valid_moves().is_empty() {
-        let turn: bool = (turn_num % 2) != 0;
+        let turn: bool = !turn_num.is_multiple_of(2);
         let turn_color = match turn {
             WHITE => "WHITE",
             BLACK => "BLACK",
@@ -274,7 +274,7 @@ fn run_manual_game() {
     println!("Game starting!");
     println!("{}", game);
     while !game.get_valid_moves().is_empty() {
-        let turn: bool = (turn_num % 2) != 0;
+        let turn: bool = !turn_num.is_multiple_of(2);
         let turn_color = match turn {
             WHITE => "WHITE",
             BLACK => "BLACK",
