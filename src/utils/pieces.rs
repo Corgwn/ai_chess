@@ -1,4 +1,7 @@
-use std::{fmt, ops::Neg};
+use std::{
+    fmt::{self, Display},
+    ops::Neg,
+};
 
 pub(crate) const WHITE: bool = false;
 pub(crate) const BLACK: bool = true;
@@ -13,6 +16,21 @@ pub enum PieceTypes {
     Pawn,
     Empty,
     Offboard,
+}
+
+impl PieceTypes {
+    pub(crate) const fn value(self) -> i32 {
+        match self {
+            PieceTypes::Knight => 320,
+            PieceTypes::Rook => 500,
+            PieceTypes::Bishop => 330,
+            PieceTypes::Queen => 900,
+            PieceTypes::King => 20000,
+            PieceTypes::Pawn => 100,
+            PieceTypes::Empty => 0,
+            PieceTypes::Offboard => 0,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
@@ -30,6 +48,16 @@ impl Neg for PieceColors {
             PieceColors::Black => PieceColors::White,
             PieceColors::White => PieceColors::Black,
             PieceColors::Empty => PieceColors::Empty,
+        }
+    }
+}
+
+impl Display for PieceColors {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PieceColors::Black => write!(f, "Black"),
+            PieceColors::White => write!(f, "White"),
+            PieceColors::Empty => write!(f, ""),
         }
     }
 }

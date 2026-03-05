@@ -5,13 +5,14 @@ use std::time::{Duration, Instant};
 use crate::board::mailbox::Mailbox;
 use crate::utils::checks::Checks;
 use crate::utils::gamemove1d::GameMove1d;
+use crate::utils::piece_squares::piece_square_value;
 use crate::utils::pieces::{PieceColors, PieceTypes, Pieces};
 use crate::utils::position::Position;
 
 pub struct MailboxNegamax;
 
 impl MailboxNegamax {
-    pub(crate) fn uci_infinite_find_move(
+    pub fn uci_infinite_find_move(
         game: Mailbox,
         rx: Receiver<&str>,
         available_moves: Option<Vec<GameMove1d>>,
@@ -53,7 +54,7 @@ impl MailboxNegamax {
         println!("bestmove {}", best_move);
         best_move
     }
-    pub(crate) fn uci_find_move(
+    pub fn uci_find_move(
         game: Mailbox,
         search_time: u128,
         available_moves: Option<Vec<GameMove1d>>,
@@ -109,7 +110,7 @@ impl MailboxNegamax {
         println!("bestmove {}", best_move);
         best_move
     }
-    pub(crate) fn uci_search_mate(
+    pub fn uci_search_mate(
         game: Mailbox,
         search_time: u128,
         available_moves: Option<Vec<GameMove1d>>,
@@ -169,10 +170,13 @@ fn is_repetition(game1: &Mailbox, game2: &Mailbox) -> bool {
     if game1.en_passant != game2.en_passant {
         is_rep = false;
     }
+    if game1.get_curr_player() != game2.get_curr_player() {
+        is_rep = false;
+    }
     is_rep
 }
 
-fn check_draws(game: &Mailbox) -> bool {
+fn is_draw(game: &Mailbox) -> bool {
     let mut is_draw = false;
 
     // 3-fold repetition
@@ -214,16 +218,17 @@ fn evaluate(game: Mailbox, valid_moves: Vec<GameMove1d>) -> i32 {
             None => return 0,
         }
     }
-    if check_draws(&game) {
+    if is_draw(&game) {
         return 0;
     }
     // Game is not terminal, get heuristic of the game
+    let endgame = is_endgame(&game);
     let mut curr_player_value: i32 = 0;
     game.board.iter().enumerate().for_each(|(index, piece)| {
         if piece.color == game.get_curr_player() {
-            curr_player_value += get_piece_value(piece, Position { value: index })
+            curr_player_value += get_piece_value(piece, Position { value: index }, endgame)
         } else {
-            curr_player_value -= get_piece_value(piece, Position { value: index })
+            curr_player_value -= get_piece_value(piece, Position { value: index }, endgame)
         }
     });
 
@@ -246,42 +251,46 @@ fn evaluate(game: Mailbox, valid_moves: Vec<GameMove1d>) -> i32 {
     curr_player_value
 }
 
-fn get_piece_value(piece: &Pieces, _pos: Position) -> i32 {
-    const PAWN_VAL: i32 = 100;
-    const BISHOP_VAL: i32 = 350;
-    const KNIGHT_VAL: i32 = 300;
-    const ROOK_VAL: i32 = 500;
-    const QUEEN_VAL: i32 = 900;
-    const KING_VAL: i32 = 400;
-    match piece {
-        Pieces {
-            piece_type: PieceTypes::Empty,
-            ..
-        } => 0,
-        Pieces {
-            piece_type: PieceTypes::Knight,
-            ..
-        } => KNIGHT_VAL,
-        Pieces {
-            piece_type: PieceTypes::Bishop,
-            ..
-        } => BISHOP_VAL,
-        Pieces {
-            piece_type: PieceTypes::Pawn,
-            ..
-        } => PAWN_VAL,
-        Pieces {
-            piece_type: PieceTypes::Rook,
-            ..
-        } => ROOK_VAL,
+fn get_piece_value(piece: &Pieces, pos: Position, endgame: bool) -> i32 {
+    let mut value: i32 = 0;
+
+    // Piece base value
+    value += piece.piece_type.value();
+
+    value += piece_square_value(piece.piece_type, piece.color, pos, endgame);
+
+    value
+}
+
+fn is_endgame(game: &Mailbox) -> bool {
+    let mut white_queen = false;
+    let mut black_queen = false;
+    let mut white_minors = 0;
+    let mut black_minors = 0;
+    game.board.iter().for_each(|piece| match piece {
         Pieces {
             piece_type: PieceTypes::Queen,
-            ..
-        } => QUEEN_VAL,
+            color: PieceColors::Black,
+        } => black_queen = true,
         Pieces {
-            piece_type: PieceTypes::King,
-            ..
-        } => KING_VAL,
-        _ => 0,
-    }
+            piece_type: PieceTypes::Queen,
+            color: PieceColors::White,
+        } => white_queen = true,
+        Pieces {
+            piece_type: PieceTypes::Knight,
+            color: x,
+        }
+        | Pieces {
+            piece_type: PieceTypes::Bishop,
+            color: x,
+        } => {
+            if x == &PieceColors::White {
+                white_minors += 1
+            } else {
+                black_minors += 1
+            }
+        }
+        _ => {}
+    });
+    (!white_queen || white_minors <= 1) && (!black_queen || black_minors <= 1)
 }

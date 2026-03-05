@@ -1,5 +1,5 @@
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
-pub(crate) enum Checks {
+pub enum Checks {
     White,
     Black,
 }

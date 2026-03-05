@@ -5,7 +5,15 @@ edition = "2021"
 
 [[bin]]
 name = "ai_chess"
-path = "src/main.rs"
+path = "src/cli.rs"
+
+[[bin]]
+name = "rusty_perft"
+path = "src/perft.rs"
+
+[lib]
+name = "rusty_chess"
+path = "src/lib.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

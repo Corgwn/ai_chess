@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
 use std::thread::JoinHandle;
@@ -6,15 +7,11 @@ use std::{thread, time};
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::ai::manual;
-use crate::ai::negamax_mailbox::MailboxNegamax;
-use crate::board::mailbox::Mailbox;
-use crate::utils::gamemove1d::GameMove1d;
-use crate::utils::pieces::{PieceColors, BLACK, WHITE};
-
-pub mod ai;
-pub mod board;
-pub mod utils;
+use rusty_chess::ai::manual;
+use rusty_chess::ai::negamax_mailbox::MailboxNegamax;
+use rusty_chess::board::mailbox::Mailbox;
+use rusty_chess::utils::gamemove1d::GameMove1d;
+use rusty_chess::utils::pieces::PieceColors;
 
 struct Engine {
     handle: JoinHandle<()>,
@@ -27,7 +24,7 @@ fn filter_uci_moves(args: &[&str]) -> Vec<GameMove1d> {
     }
     args.iter()
         .filter(|x| RE.is_match(x))
-        .map(GameMove1d::from_str)
+        .map(|x| GameMove1d::from_str(x).unwrap())
         .collect()
 }
 
@@ -224,45 +221,45 @@ fn run_sample_game() {
     println!("Game starting!");
     println!("{}", game);
     while !game.get_valid_moves().is_empty() {
-        let turn: bool = !turn_num.is_multiple_of(2);
-        let turn_color = match turn {
-            WHITE => "WHITE",
-            BLACK => "BLACK",
-        };
+        let turn = game.get_curr_player();
 
         let turn_start = time::Instant::now();
-        let search_time = if turn_color == "WHITE" {
-            white_time / 20 + inc / 2
-        } else {
-            black_time / 20 + inc / 2
+        let search_time = match turn {
+            PieceColors::Black => black_time / 20 + inc / 2,
+            PieceColors::White => white_time / 20 + inc / 2,
+            PieceColors::Empty => 0,
         };
         let (_tx, rx) = mpsc::channel();
         println!(
             "Starting search for player {}, searching for {}ms",
-            turn_color, search_time
+            turn, search_time
         );
         let next_move =
             MailboxNegamax::uci_find_move(game.clone(), search_time, None, None, None, rx);
         let turn_duration = turn_start.elapsed().as_millis();
 
-        if turn_color == "WHITE" {
-            if white_time.checked_sub(turn_duration).is_some() {
-                white_time = white_time + inc - turn_duration;
-            } else {
-                println!("White has run out of time, Black has won on time.");
-                break;
+        match turn {
+            PieceColors::Black => {
+                if black_time.checked_sub(turn_duration).is_some() {
+                    black_time = black_time + inc - turn_duration;
+                } else {
+                    println!("Black has run out of time, White has won!");
+                }
             }
-        } else if black_time.checked_sub(turn_duration).is_some() {
-            black_time = black_time + inc - turn_duration;
-        } else {
-            println!("Black has run out of time, White has won on time.");
-            break;
-        }
+            PieceColors::White => {
+                if white_time.checked_sub(turn_duration).is_some() {
+                    white_time = white_time + inc - turn_duration;
+                } else {
+                    println!("White has run out of time, Black has won!");
+                }
+            }
+            PieceColors::Empty => {}
+        };
 
         turn_num += 1;
         game = game.make_move(&next_move);
         println!(
-            "\nTurn number: {turn_num} | Player: {turn_color} | Move: {next_move} | wtime: {white_time} | btime: {black_time} | inc: {inc}\n",
+            "\nTurn number: {turn_num} | Player: {turn} | Move: {next_move} | wtime: {white_time} | btime: {black_time} | inc: {inc}\n",
         );
         println!("{}", game);
     }
@@ -274,18 +271,14 @@ fn run_manual_game() {
     println!("Game starting!");
     println!("{}", game);
     while !game.get_valid_moves().is_empty() {
-        let turn: bool = !turn_num.is_multiple_of(2);
-        let turn_color = match turn {
-            WHITE => "WHITE",
-            BLACK => "BLACK",
-        };
+        let turn = game.get_curr_player();
 
-        println!("Starting search for player {}", turn_color);
+        println!("Starting search for player {}", turn);
         let next_move = manual::Manual::find_move_1d();
 
         turn_num += 1;
         game = game.make_move(&next_move);
-        println!("\nTurn number: {turn_num} | Player: {turn_color} | Move: {next_move}\n",);
+        println!("\nTurn number: {turn_num} | Player: {turn} | Move: {next_move}\n",);
         println!("{}", game);
     }
 }

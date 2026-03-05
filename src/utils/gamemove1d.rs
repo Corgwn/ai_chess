@@ -2,48 +2,47 @@ use crate::utils::pieces::PieceColors::{Black, White};
 use crate::utils::pieces::PieceTypes::{Bishop, Knight, Queen, Rook};
 use crate::utils::pieces::{PieceColors, Pieces};
 use std::fmt;
+use std::str::FromStr;
 
 use super::position::Position;
 
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
-pub(crate) struct GameMove1d {
-    pub(crate) start: Position,
-    pub(crate) end: Position,
-    pub(crate) castle: Option<CastleTypes>,
-    pub(crate) promote: Option<Pieces>,
-    pub(crate) passant: Option<PassantTypes>,
-    pub(crate) capture: bool,
+pub struct GameMove1d {
+    pub start: Position,
+    pub end: Position,
+    pub castle: Option<CastleTypes>,
+    pub promote: Option<Pieces>,
+    pub passant: Option<PassantTypes>,
+    pub capture: bool,
 }
 
-impl GameMove1d {
-    pub(crate) fn from_str(input: &&str) -> Self {
-        // if ![4 as usize, 5 as usize].contains(&input.len()) {
-        //     return Err(ChessError::MoveParseLengthError);
-        // }
-        // if !input.chars().all(char::is_alphanumeric) {
-        //     return Err(ChessError::MoveParseAlphaNumError);
-        // }
-        let squares = if input.len() == 4 {
-            input.split_at(2)
+#[derive(Debug, PartialEq, Eq)]
+pub struct ParseMoveError;
+
+impl FromStr for GameMove1d {
+    type Err = ParseMoveError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let squares = if s.len() == 4 {
+            s.split_at(2)
         } else {
-            input[..4].split_at(2)
+            s[..4].split_at(2)
         };
-        println!("Squares: {}, {}", squares.0, squares.1);
+        // println!("Squares: {}, {}", squares.0, squares.1);
 
         // Get start and end spaces
         let start = to_num(squares.0);
         let end = to_num(squares.1);
-        println!("Start: {}, End: {}", start, end);
+        // println!("Start: {}, End: {}", start, end);
 
         // Get promotion if needed
-        println!("{}", input.len());
-        let promote = if input.len() == 5 {
-            let color: PieceColors = match input.chars().nth(3).unwrap() {
+        // println!("{}", s.len());
+        let promote = if s.len() == 5 {
+            let color: PieceColors = match s.chars().nth(3).ok_or(ParseMoveError)? {
                 '8' => White,
                 '1' => Black,
                 _ => PieceColors::Empty,
             };
-            match input.chars().nth(4).unwrap() {
+            match s.chars().nth(4).ok_or(ParseMoveError)? {
                 'b' => Some(Pieces {
                     piece_type: Bishop,
                     color,
@@ -65,25 +64,25 @@ impl GameMove1d {
         } else {
             None
         };
-        println!("Promotion: {:?}", promote);
+        // println!("Promotion: {:?}", promote);
         // Check for castle moves
-        let castle = match *input {
+        let castle = match s {
             "e1g1" => Some(CastleTypes::WhiteKing),
             "e1c1" => Some(CastleTypes::WhiteQueen),
             "e8g8" => Some(CastleTypes::BlackKing),
             "e8c8" => Some(CastleTypes::BlackQueen),
             _ => None,
         };
-        println!("Castle: {:?}", castle);
+        // println!("Castle: {:?}", castle);
 
-        GameMove1d {
+        Ok(GameMove1d {
             start: Position { value: start },
             end: Position { value: end },
             castle,
             promote,
             passant: None,
             capture: false,
-        }
+        })
     }
 }
 
@@ -110,7 +109,7 @@ impl fmt::Debug for GameMove1d {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum PassantTypes {
+pub enum PassantTypes {
     PassantCapture(Position),
     PassantAvailable(Position),
 }
@@ -191,18 +190,18 @@ mod tests {
     fn test_str_to_game_move() {
         assert_eq!(
             GameMove1d::from_str(&"e2e4"),
-            GameMove1d {
+            Ok(GameMove1d {
                 start: Position { value: 35 },
                 end: Position { value: 55 },
                 castle: None,
                 promote: None,
                 passant: None,
                 capture: false,
-            }
+            })
         );
         assert_eq!(
             GameMove1d::from_str(&"a7a8q"),
-            GameMove1d {
+            Ok(GameMove1d {
                 start: Position { value: 81 },
                 end: Position { value: 91 },
                 castle: None,
@@ -212,11 +211,11 @@ mod tests {
                 }),
                 passant: None,
                 capture: false,
-            }
+            })
         );
         assert_eq!(
             GameMove1d::from_str(&"d2d1k"),
-            GameMove1d {
+            Ok(GameMove1d {
                 start: Position { value: 34 },
                 end: Position { value: 24 },
                 castle: None,
@@ -226,7 +225,7 @@ mod tests {
                 }),
                 passant: None,
                 capture: false,
-            }
+            })
         )
     }
 }

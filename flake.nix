@@ -13,11 +13,23 @@
       self,
       nixpkgs,
       naersk,
-    # fenix,
+      # fenix,
     }:
     let
       pkgs = nixpkgs.legacyPackages."x86_64-linux";
       naerskLib = pkgs.callPackage naersk { };
+      perftree = pkgs.rustPlatform.buildRustPackage rec {
+        pname = "perftree-cli";
+        version = "0.2.0";
+        src = pkgs.fetchFromGitHub {
+          owner = "agausmann";
+          repo = "perftree";
+          rev = "423ceb0";
+          hash = "sha256-s414KH34gJIKGit8A/Gg6v3JVVRApVnJz0skqeKplVg=";
+        };
+        cargoHash = "sha256-oSn9SF4EzjEzMg8q/bna/Fb3RlgGcNodqxd7hikYQx4=";
+        doCheck = false;
+      };
       # fenixLib = fenix.packages."x86_64-linux";
       # rustToolchain = fenixLib.stable.toolchain;
     in
@@ -43,6 +55,8 @@
           pkgs.sqlite
           pkgs.gcc
           pkgs.fastchess
+          pkgs.stockfish
+          perftree
         ];
 
         nativeBuildInputs = [
