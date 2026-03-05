@@ -237,25 +237,22 @@ impl Mailbox {
         // Generate Attack Maps
         let attack_maps = Mailbox::generate_attack_maps(board_state);
 
-        // Generate Mailbox struct (minus check value)
-        let mut final_mailbox = Mailbox {
+        // Get Checks
+        let check = verify_checks(board_state, white_king, black_king);
+
+        Ok(Mailbox {
             board: board_state,
             curr_player,
             castling_rights,
             en_passant,
             half_moves,
             full_moves,
-            check: None,
+            check,
             white_king,
             black_king,
             previous_state: None,
             attack_maps,
-        };
-
-        // Get Checks
-        final_mailbox.check = verify_checks(&final_mailbox);
-
-        Ok(final_mailbox)
+        })
     }
 
     pub fn get_valid_moves(&self) -> Vec<GameMove1d> {
@@ -436,7 +433,11 @@ impl Mailbox {
         new_mailbox.previous_state = Some(Arc::new(self.clone()));
 
         // Update who is in check
-        new_mailbox.check = verify_checks(&new_mailbox);
+        new_mailbox.check = verify_checks(
+            new_mailbox.board,
+            new_mailbox.white_king,
+            new_mailbox.black_king,
+        );
 
         new_mailbox
     }
@@ -956,264 +957,246 @@ impl Mailbox {
     }
 }
 
-fn verify_checks(game: &Mailbox) -> Option<Checks> {
-    if is_black_checked(&game) {
-        Some(Checks::Black)
-    } else if is_white_checked(&game) {
-        Some(Checks::White)
-    } else {
-        None
+fn verify_checks(
+    board: [Pieces; 120],
+    white_king: Position,
+    black_king: Position,
+) -> Option<Checks> {
+    if is_black_checked(board, black_king) {
+        return Some(Checks::Black);
     }
+    if is_white_checked(board, white_king) {
+        return Some(Checks::White);
+    }
+    None
+}
+fn is_white_checked(board: [Pieces; 120], white_king: Position) -> bool {
+    // Check knights
+    for offset in KNIGHT_OFFSETS {
+        let test_pos = Position {
+            value: white_king
+                .value
+                .checked_add_signed(offset as isize)
+                .expect("Invalid position found"),
+        };
+        if let Pieces {
+            piece_type: PieceTypes::Knight,
+            color: PieceColors::Black,
+        } = board[test_pos.value]
+        {
+            return true;
+        }
+    }
+
+    // Check diagonal sliders
+    for offset in BISHOP_OFFSETS {
+        let mut test_pos = white_king;
+        loop {
+            test_pos = Position {
+                value: test_pos
+                    .value
+                    .checked_add_signed(offset as isize)
+                    .expect("Invalid position found"),
+            };
+            match board[test_pos.value] {
+                Pieces {
+                    piece_type: PieceTypes::Bishop,
+                    color: PieceColors::Black,
+                }
+                | Pieces {
+                    piece_type: PieceTypes::Queen,
+                    color: PieceColors::Black,
+                }
+                | Pieces {
+                    piece_type: PieceTypes::King,
+                    color: PieceColors::Black,
+                } => {
+                    return true;
+                }
+                Pieces {
+                    piece_type: PieceTypes::Empty,
+                    ..
+                } => {
+                    continue;
+                }
+                _ => {
+                    break;
+                }
+            }
+        }
+    }
+
+    // Check orthogonal sliders
+    for offset in ROOK_OFFSETS {
+        let mut test_pos = white_king;
+        loop {
+            test_pos = Position {
+                value: test_pos
+                    .value
+                    .checked_add_signed(offset as isize)
+                    .expect("Invalid position found"),
+            };
+            match board[test_pos.value] {
+                Pieces {
+                    piece_type: PieceTypes::Rook,
+                    color: PieceColors::Black,
+                }
+                | Pieces {
+                    piece_type: PieceTypes::Queen,
+                    color: PieceColors::Black,
+                }
+                | Pieces {
+                    piece_type: PieceTypes::King,
+                    color: PieceColors::Black,
+                } => {
+                    return true;
+                }
+                Pieces {
+                    piece_type: PieceTypes::Empty,
+                    ..
+                } => {
+                    continue;
+                }
+                _ => {
+                    break;
+                }
+            }
+        }
+    }
+
+    // Check pawns
+    for offset in [UR, UL] {
+        let test_pos = Position {
+            value: white_king
+                .value
+                .checked_add_signed(offset as isize)
+                .expect("Invalid position found"),
+        };
+        if let Pieces {
+            piece_type: PieceTypes::Pawn,
+            color: PieceColors::Black,
+        } = board[test_pos.value]
+        {
+            return true;
+        }
+    }
+
+    false
 }
 
-fn is_white_checked(game: &Mailbox) -> bool {
-    return game.attack_maps.black[game.white_king.value] > 0;
+fn is_black_checked(board: [Pieces; 120], black_king: Position) -> bool {
+    // Check knights
+    for offset in KNIGHT_OFFSETS {
+        let test_pos = Position {
+            value: black_king
+                .value
+                .checked_add_signed(offset as isize)
+                .expect("Invalid position found"),
+        };
+        if let Pieces {
+            piece_type: PieceTypes::Knight,
+            color: PieceColors::White,
+        } = board[test_pos.value]
+        {
+            return true;
+        }
+    }
+
+    // Check diagonal sliders
+    for offset in BISHOP_OFFSETS {
+        let mut test_pos = black_king;
+        loop {
+            test_pos = Position {
+                value: test_pos
+                    .value
+                    .checked_add_signed(offset as isize)
+                    .expect("Invalid position found"),
+            };
+            match board[test_pos.value] {
+                Pieces {
+                    piece_type: PieceTypes::Bishop,
+                    color: PieceColors::White,
+                }
+                | Pieces {
+                    piece_type: PieceTypes::Queen,
+                    color: PieceColors::White,
+                }
+                | Pieces {
+                    piece_type: PieceTypes::King,
+                    color: PieceColors::White,
+                } => {
+                    return true;
+                }
+                Pieces {
+                    piece_type: PieceTypes::Empty,
+                    ..
+                } => {
+                    continue;
+                }
+                _ => {
+                    break;
+                }
+            }
+        }
+    }
+
+    // Check orthogonal sliders
+    for offset in ROOK_OFFSETS {
+        let mut test_pos = black_king;
+        loop {
+            test_pos = Position {
+                value: test_pos
+                    .value
+                    .checked_add_signed(offset as isize)
+                    .expect("Invalid position found"),
+            };
+            match board[test_pos.value] {
+                Pieces {
+                    piece_type: PieceTypes::Rook,
+                    color: PieceColors::White,
+                }
+                | Pieces {
+                    piece_type: PieceTypes::Queen,
+                    color: PieceColors::White,
+                }
+                | Pieces {
+                    piece_type: PieceTypes::King,
+                    color: PieceColors::White,
+                } => {
+                    return true;
+                }
+                Pieces {
+                    piece_type: PieceTypes::Empty,
+                    ..
+                } => {
+                    continue;
+                }
+                _ => {
+                    break;
+                }
+            }
+        }
+    }
+
+    // Check pawns
+    for offset in [DR, DL] {
+        let test_pos = Position {
+            value: black_king
+                .value
+                .checked_add_signed(offset as isize)
+                .expect("Invalid position found"),
+        };
+        if let Pieces {
+            piece_type: PieceTypes::Pawn,
+            color: PieceColors::White,
+        } = board[test_pos.value]
+        {
+            return true;
+        }
+    }
+
+    false
 }
-
-fn is_black_checked(game: &Mailbox) -> bool {
-    return game.attack_maps.white[game.black_king.value] > 0;
-}
-
-// fn verify_checks(
-//     board: [Pieces; 120],
-//     white_king: Position,
-//     black_king: Position,
-// ) -> Option<Checks> {
-//     if is_black_checked(board, black_king) {
-//         return Some(Checks::Black);
-//     }
-//     if is_white_checked(board, white_king) {
-//         return Some(Checks::White);
-//     }
-//     None
-// }
-// fn is_white_checked(board: [Pieces; 120], white_king: Position) -> bool {
-//     // Check knights
-//     for offset in KNIGHT_OFFSETS {
-//         let test_pos = Position {
-//             value: white_king
-//                 .value
-//                 .checked_add_signed(offset as isize)
-//                 .expect("Invalid position found"),
-//         };
-//         if let Pieces {
-//             piece_type: PieceTypes::Knight,
-//             color: PieceColors::Black,
-//         } = board[test_pos.value]
-//         {
-//             return true;
-//         }
-//     }
-
-//     // Check diagonal sliders
-//     for offset in BISHOP_OFFSETS {
-//         let mut test_pos = white_king;
-//         loop {
-//             test_pos = Position {
-//                 value: test_pos
-//                     .value
-//                     .checked_add_signed(offset as isize)
-//                     .expect("Invalid position found"),
-//             };
-//             match board[test_pos.value] {
-//                 Pieces {
-//                     piece_type: PieceTypes::Bishop,
-//                     color: PieceColors::Black,
-//                 }
-//                 | Pieces {
-//                     piece_type: PieceTypes::Queen,
-//                     color: PieceColors::Black,
-//                 }
-//                 | Pieces {
-//                     piece_type: PieceTypes::King,
-//                     color: PieceColors::Black,
-//                 } => {
-//                     return true;
-//                 }
-//                 Pieces {
-//                     piece_type: PieceTypes::Empty,
-//                     ..
-//                 } => {
-//                     continue;
-//                 }
-//                 _ => {
-//                     break;
-//                 }
-//             }
-//         }
-//     }
-
-//     // Check orthogonal sliders
-//     for offset in ROOK_OFFSETS {
-//         let mut test_pos = white_king;
-//         loop {
-//             test_pos = Position {
-//                 value: test_pos
-//                     .value
-//                     .checked_add_signed(offset as isize)
-//                     .expect("Invalid position found"),
-//             };
-//             match board[test_pos.value] {
-//                 Pieces {
-//                     piece_type: PieceTypes::Rook,
-//                     color: PieceColors::Black,
-//                 }
-//                 | Pieces {
-//                     piece_type: PieceTypes::Queen,
-//                     color: PieceColors::Black,
-//                 }
-//                 | Pieces {
-//                     piece_type: PieceTypes::King,
-//                     color: PieceColors::Black,
-//                 } => {
-//                     return true;
-//                 }
-//                 Pieces {
-//                     piece_type: PieceTypes::Empty,
-//                     ..
-//                 } => {
-//                     continue;
-//                 }
-//                 _ => {
-//                     break;
-//                 }
-//             }
-//         }
-//     }
-
-//     // Check pawns
-//     for offset in [UR, UL] {
-//         let test_pos = Position {
-//             value: white_king
-//                 .value
-//                 .checked_add_signed(offset as isize)
-//                 .expect("Invalid position found"),
-//         };
-//         if let Pieces {
-//             piece_type: PieceTypes::Pawn,
-//             color: PieceColors::Black,
-//         } = board[test_pos.value]
-//         {
-//             return true;
-//         }
-//     }
-
-//     false
-// }
-
-// fn is_black_checked(board: [Pieces; 120], black_king: Position) -> bool {
-//     // Check knights
-//     for offset in KNIGHT_OFFSETS {
-//         let test_pos = Position {
-//             value: black_king
-//                 .value
-//                 .checked_add_signed(offset as isize)
-//                 .expect("Invalid position found"),
-//         };
-//         if let Pieces {
-//             piece_type: PieceTypes::Knight,
-//             color: PieceColors::White,
-//         } = board[test_pos.value]
-//         {
-//             return true;
-//         }
-//     }
-
-//     // Check diagonal sliders
-//     for offset in BISHOP_OFFSETS {
-//         let mut test_pos = black_king;
-//         loop {
-//             test_pos = Position {
-//                 value: test_pos
-//                     .value
-//                     .checked_add_signed(offset as isize)
-//                     .expect("Invalid position found"),
-//             };
-//             match board[test_pos.value] {
-//                 Pieces {
-//                     piece_type: PieceTypes::Bishop,
-//                     color: PieceColors::White,
-//                 }
-//                 | Pieces {
-//                     piece_type: PieceTypes::Queen,
-//                     color: PieceColors::White,
-//                 }
-//                 | Pieces {
-//                     piece_type: PieceTypes::King,
-//                     color: PieceColors::White,
-//                 } => {
-//                     return true;
-//                 }
-//                 Pieces {
-//                     piece_type: PieceTypes::Empty,
-//                     ..
-//                 } => {
-//                     continue;
-//                 }
-//                 _ => {
-//                     break;
-//                 }
-//             }
-//         }
-//     }
-
-//     // Check orthogonal sliders
-//     for offset in ROOK_OFFSETS {
-//         let mut test_pos = black_king;
-//         loop {
-//             test_pos = Position {
-//                 value: test_pos
-//                     .value
-//                     .checked_add_signed(offset as isize)
-//                     .expect("Invalid position found"),
-//             };
-//             match board[test_pos.value] {
-//                 Pieces {
-//                     piece_type: PieceTypes::Rook,
-//                     color: PieceColors::White,
-//                 }
-//                 | Pieces {
-//                     piece_type: PieceTypes::Queen,
-//                     color: PieceColors::White,
-//                 }
-//                 | Pieces {
-//                     piece_type: PieceTypes::King,
-//                     color: PieceColors::White,
-//                 } => {
-//                     return true;
-//                 }
-//                 Pieces {
-//                     piece_type: PieceTypes::Empty,
-//                     ..
-//                 } => {
-//                     continue;
-//                 }
-//                 _ => {
-//                     break;
-//                 }
-//             }
-//         }
-//     }
-
-//     // Check pawns
-//     for offset in [DR, DL] {
-//         let test_pos = Position {
-//             value: black_king
-//                 .value
-//                 .checked_add_signed(offset as isize)
-//                 .expect("Invalid position found"),
-//         };
-//         if let Pieces {
-//             piece_type: PieceTypes::Pawn,
-//             color: PieceColors::White,
-//         } = board[test_pos.value]
-//         {
-//             return true;
-//         }
-//     }
-
-//     false
-// }
 
 fn can_promote(test_pos: Position, curr_player: PieceColors) -> bool {
     ((21..=28).contains(&test_pos.value) && curr_player == PieceColors::Black)
