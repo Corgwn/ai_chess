@@ -58,7 +58,7 @@
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 9807733832799174459,
+    "seed": 8116733048748605060,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
@@ -67,7 +67,7 @@
     "wait": 0,
     "autosaveinterval": 20,
     "games": 2,
-    "rounds": 25,
+    "rounds": 10,
     "concurrency": 4,
     "force_concurrency": false,
     "recover": false,
@@ -105,9 +105,9 @@
             "variant": 0
         },
         {
-            "name": "Engine2",
+            "name": "Stockfish",
             "dir": "",
-            "cmd": "target/release/ai_chess",
+            "cmd": "stockfish",
             "args": "",
             "restart": false,
             "options": [],
@@ -126,27 +126,27 @@
         }
     ],
     "stats": {
-        "Engine2 vs Engine1": {
-            "wins": 1,
-            "losses": 1,
-            "draws": 36,
-            "penta_WW": 0,
-            "penta_WD": 1,
+        "Stockfish vs Engine1": {
+            "wins": 12,
+            "losses": 0,
+            "draws": 0,
+            "penta_WW": 6,
+            "penta_WD": 0,
             "penta_WL": 0,
-            "penta_DD": 17,
-            "penta_LD": 1,
+            "penta_DD": 0,
+            "penta_LD": 0,
             "penta_LL": 0
         },
-        "Engine1 vs Engine2": {
+        "Engine1 vs Stockfish": {
             "wins": 0,
-            "losses": 2,
-            "draws": 10,
+            "losses": 8,
+            "draws": 0,
             "penta_WW": 0,
             "penta_WD": 0,
             "penta_WL": 0,
-            "penta_DD": 4,
-            "penta_LD": 2,
-            "penta_LL": 0
+            "penta_DD": 0,
+            "penta_LD": 0,
+            "penta_LL": 4
         }
     }
 }
