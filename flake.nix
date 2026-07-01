@@ -56,7 +56,7 @@
           pkgs.gcc
           pkgs.fastchess
           pkgs.stockfish
-          perftree
+          # perftree
         ];
 
         nativeBuildInputs = [
