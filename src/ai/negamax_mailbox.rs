@@ -11,6 +11,9 @@ use crate::utils::position::Position;
 
 pub struct MailboxNegamax;
 
+const NINF: i32 = i32::MIN + 1;
+const INF: i32 = i32::MAX;
+
 impl MailboxNegamax {
     pub fn uci_infinite_find_move(
         game: Mailbox,
@@ -131,10 +134,10 @@ fn root_nega_max(
     available_moves: Option<Vec<GameMove1d>>,
 ) -> (GameMove1d, i32) {
     let valid_moves = available_moves.unwrap_or_else(|| game.get_valid_moves());
-    let mut max_score = i32::MIN;
+    let mut max_score = NINF;
     let mut best_move = valid_moves[0];
     for mv in valid_moves {
-        let score = nega_max(game.make_move(&mv), depth - 1);
+        let score = nega_max(game.make_move(&mv), depth - 1, NINF, INF);
         if max_score < score {
             max_score = score;
             best_move = mv;
@@ -143,17 +146,23 @@ fn root_nega_max(
     (best_move, max_score)
 }
 
-fn nega_max(game: Mailbox, depth: usize) -> i32 {
+fn nega_max(game: Mailbox, depth: usize, mut alpha: i32, beta: i32) -> i32 {
     let valid_moves = game.get_valid_moves();
     if depth == 0 {
         return evaluate(game, valid_moves);
     }
-    let mut max = i32::MIN + 1;
+    let mut max = NINF;
     for game_move in valid_moves {
         let new_game = game.make_move(&game_move);
-        let score = -nega_max(new_game, depth - 1);
+        let score = -nega_max(new_game, depth - 1, -beta.clone(), -alpha.clone());
         if score > max {
             max = score;
+            if score > alpha {
+                alpha = score;
+            }
+        }
+        if score >= beta {
+            break;
         }
     }
     max
@@ -203,16 +212,16 @@ fn evaluate(game: Mailbox, valid_moves: Vec<GameMove1d>) -> i32 {
         match check {
             Some(Checks::White) => {
                 if game.get_curr_player() == PieceColors::Black {
-                    return i32::MAX;
+                    return INF;
                 } else if game.get_curr_player() == PieceColors::White {
-                    return i32::MIN + 1;
+                    return NINF;
                 }
             }
             Some(Checks::Black) => {
                 if game.get_curr_player() == PieceColors::Black {
-                    return i32::MIN + 1;
+                    return NINF;
                 } else if game.get_curr_player() == PieceColors::White {
-                    return i32::MAX;
+                    return INF;
                 }
             }
             None => return 0,
@@ -221,7 +230,9 @@ fn evaluate(game: Mailbox, valid_moves: Vec<GameMove1d>) -> i32 {
     if is_draw(&game) {
         return 0;
     }
+
     // Game is not terminal, get heuristic of the game
+    // Raw piece/position values
     let endgame = is_endgame(&game);
     let mut curr_player_value: i32 = 0;
     game.board.iter().enumerate().for_each(|(index, piece)| {
@@ -232,21 +243,22 @@ fn evaluate(game: Mailbox, valid_moves: Vec<GameMove1d>) -> i32 {
         }
     });
 
+    // Castle right values
     let castles = game.get_castle_rights();
-    if game.get_curr_player() == PieceColors::White {
-        curr_player_value += i32::from(castles.white_king) * 50;
-        curr_player_value += i32::from(castles.white_queen) * 40;
+    let white_mult = if game.curr_player == PieceColors::White {
+        1
     } else {
-        curr_player_value -= i32::from(castles.white_king) * 50;
-        curr_player_value -= i32::from(castles.white_queen) * 40;
-    }
-    if game.get_curr_player() == PieceColors::Black {
-        curr_player_value += i32::from(castles.black_king) * 50;
-        curr_player_value += i32::from(castles.black_queen) * 40;
+        -1
+    };
+    let black_mult = if game.curr_player == PieceColors::Black {
+        1
     } else {
-        curr_player_value -= i32::from(castles.black_king) * 50;
-        curr_player_value -= i32::from(castles.black_queen) * 40;
-    }
+        -1
+    };
+    curr_player_value += i32::from(castles.white_king) * white_mult * 50
+        + i32::from(castles.white_queen) * white_mult * 40
+        + i32::from(castles.black_king) * black_mult * 50
+        + i32::from(castles.black_queen) * black_mult * 40;
 
     curr_player_value
 }

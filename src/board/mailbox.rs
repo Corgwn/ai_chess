@@ -47,8 +47,8 @@ pub struct Mailbox {
     pub half_moves: u8,
     pub full_moves: u8,
     pub check: Option<Checks>,
-    white_king: Position,
-    black_king: Position,
+    pub white_king: Position,
+    pub black_king: Position,
     pub previous_state: Option<Arc<Mailbox>>,
     pub attack_maps: AttackMaps,
 }
