@@ -25,7 +25,7 @@ impl FromStr for GameMove1d {
         let squares = if s.len() == 4 {
             s.split_at(2)
         } else {
-            s[..4].split_at(2)
+            s.get(..4).ok_or(ParseMoveError)?.split_at(2)
         };
         // println!("Squares: {}, {}", squares.0, squares.1);
 
@@ -90,7 +90,7 @@ impl fmt::Display for GameMove1d {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let promotion = match self.promote {
             Some(piece) => piece.to_string().to_lowercase(),
-            None => "".to_string(),
+            None => String::new(),
         };
         write!(
             f,
@@ -104,7 +104,7 @@ impl fmt::Display for GameMove1d {
 
 impl fmt::Debug for GameMove1d {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -123,8 +123,8 @@ pub enum CastleTypes {
 }
 
 pub(crate) fn to_str(num: usize) -> String {
-    let temp = num.checked_sub(20).unwrap();
-    let row = (temp / 10) + 1;
+    let temp = num.saturating_sub(20);
+    let row = temp.strict_div(10).saturating_add(1);
     let col = temp.rem_euclid(10);
     let col_char = match col {
         1 => 'a',
@@ -164,7 +164,8 @@ pub(crate) fn to_num(pos: &str) -> usize {
         '8' => 7,
         _ => panic!(),
     };
-    21 + col + (10 * row)
+    col.saturating_add(21)
+        .saturating_add(row.saturating_mul(10))
 }
 
 #[cfg(test)]
@@ -189,7 +190,7 @@ mod tests {
     #[test]
     fn test_str_to_game_move() {
         assert_eq!(
-            GameMove1d::from_str(&"e2e4"),
+            GameMove1d::from_str("e2e4"),
             Ok(GameMove1d {
                 start: Position { value: 35 },
                 end: Position { value: 55 },
@@ -200,7 +201,7 @@ mod tests {
             })
         );
         assert_eq!(
-            GameMove1d::from_str(&"a7a8q"),
+            GameMove1d::from_str("a7a8q"),
             Ok(GameMove1d {
                 start: Position { value: 81 },
                 end: Position { value: 91 },
@@ -214,7 +215,7 @@ mod tests {
             })
         );
         assert_eq!(
-            GameMove1d::from_str(&"d2d1k"),
+            GameMove1d::from_str("d2d1k"),
             Ok(GameMove1d {
                 start: Position { value: 34 },
                 end: Position { value: 24 },
@@ -226,6 +227,6 @@ mod tests {
                 passant: None,
                 capture: false,
             })
-        )
+        );
     }
 }

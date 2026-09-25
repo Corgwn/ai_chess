@@ -1,6 +1,10 @@
 #![allow(dead_code)]
+use std::ops::{AddAssign, Neg};
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
+
+use rand::distr::weighted::Weight;
+use rayon::prelude::*;
 
 use crate::board::mailbox::Mailbox;
 use crate::utils::checks::Checks;
@@ -16,16 +20,16 @@ const INF: i32 = i32::MAX;
 
 impl MailboxNegamax {
     pub fn uci_infinite_find_move(
-        game: Mailbox,
-        rx: Receiver<&str>,
-        available_moves: Option<Vec<GameMove1d>>,
+        game: &Mailbox,
+        rx: &Receiver<&str>,
+        available_moves: &Option<Vec<GameMove1d>>,
     ) -> GameMove1d {
         let start_time = Instant::now();
         let mut best_move: GameMove1d;
         let mut best_score: i32;
         let mut depth: usize = 1;
 
-        (best_move, best_score) = root_nega_max(&game, depth, available_moves.clone());
+        (best_move, best_score) = root_nega_max(game, depth, available_moves.clone());
         println!(
             "info depth {} pv {} score cp {} time {}",
             depth,
@@ -33,17 +37,15 @@ impl MailboxNegamax {
             best_score,
             start_time.elapsed().as_millis(),
         );
-        depth += 1;
+        depth = depth.saturating_add(1);
 
         loop {
             match rx.try_recv() {
-                Ok("stop") => break,
-                Ok(_) => {}
-                Err(std::sync::mpsc::TryRecvError::Empty) => {}
-                Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
+                Ok("stop") | Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
+                Ok(_) | Err(std::sync::mpsc::TryRecvError::Empty) => {}
             }
 
-            (best_move, best_score) = root_nega_max(&game, depth, available_moves.clone());
+            (best_move, best_score) = root_nega_max(game, depth, available_moves.clone());
             println!(
                 "info depth {} pv {} score cp {} time {}",
                 depth,
@@ -51,19 +53,19 @@ impl MailboxNegamax {
                 best_score,
                 start_time.elapsed().as_millis(),
             );
-            depth += 1;
+            depth = depth.saturating_add(1);
         }
 
-        println!("bestmove {}", best_move);
+        println!("bestmove {best_move}");
         best_move
     }
     pub fn uci_find_move(
-        game: Mailbox,
+        game: &Mailbox,
         search_time: u128,
-        available_moves: Option<Vec<GameMove1d>>,
+        available_moves: &Option<Vec<GameMove1d>>,
         max_plies: Option<usize>,
         _max_nodes: Option<usize>,
-        rx: Receiver<&str>,
+        rx: &Receiver<&str>,
     ) -> GameMove1d {
         let start_time = Instant::now();
         let mut elapsed_time;
@@ -73,7 +75,7 @@ impl MailboxNegamax {
         let mut best_score: i32;
         let mut depth: usize = 1;
 
-        (best_move, best_score) = root_nega_max(&game, depth, available_moves.clone());
+        (best_move, best_score) = root_nega_max(game, depth, available_moves.clone());
         println!(
             "info depth {} pv {} score cp {} time {} ",
             depth,
@@ -81,22 +83,22 @@ impl MailboxNegamax {
             best_score,
             start_time.elapsed().as_millis(),
         );
-        depth += 1;
-        last_elapsed_time = Duration::from_millis(1);
+        depth = depth.saturating_add(1);
+        last_elapsed_time = Duration::from_nanos(1);
         elapsed_time = start_time.elapsed();
-        elapsed_ratio = elapsed_time.as_nanos() / last_elapsed_time.as_nanos();
+        elapsed_ratio = elapsed_time
+            .as_nanos()
+            .saturating_div(last_elapsed_time.as_nanos());
 
-        while elapsed_time.as_millis() * elapsed_ratio < search_time
+        while elapsed_time.as_millis().saturating_mul(elapsed_ratio) < search_time
             && depth < max_plies.unwrap_or(usize::MAX)
         {
             match rx.try_recv() {
-                Ok("stop") => break,
-                Ok(_) => {}
-                Err(std::sync::mpsc::TryRecvError::Empty) => {}
-                Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
+                Ok("stop") | Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
+                Ok(_) | Err(std::sync::mpsc::TryRecvError::Empty) => {}
             }
 
-            (best_move, best_score) = root_nega_max(&game, depth, available_moves.clone());
+            (best_move, best_score) = root_nega_max(game, depth, available_moves.clone());
             println!(
                 "info depth {} pv {} score cp {} time {} ",
                 depth,
@@ -104,27 +106,29 @@ impl MailboxNegamax {
                 best_score,
                 start_time.elapsed().as_millis(),
             );
-            depth += 1;
+            depth = depth.saturating_add(1);
             last_elapsed_time = elapsed_time;
             elapsed_time = start_time.elapsed();
             elapsed_ratio = elapsed_time.as_nanos() / last_elapsed_time.as_nanos();
         }
 
-        println!("bestmove {}", best_move);
+        println!("bestmove {best_move}");
         best_move
     }
+
     pub fn uci_search_mate(
-        game: Mailbox,
+        game: &Mailbox,
         search_time: u128,
-        available_moves: Option<Vec<GameMove1d>>,
+        available_moves: &Option<Vec<GameMove1d>>,
         mate_moves: usize,
     ) -> GameMove1d {
         // TODO: set up search thread, and listen for both stop command and search information
         // If stop command is issued, immediately stop search and return most recent best move
-        let best_move: GameMove1d = Default::default();
+        // let best_move: GameMove1d = GameMove1d::default();
 
         // TODO: if search ends normally, return best move
-        best_move
+        // best_move
+        todo!()
     }
 }
 
@@ -137,7 +141,7 @@ fn root_nega_max(
     let mut max_score = NINF;
     let mut best_move = valid_moves[0];
     for mv in valid_moves {
-        let score = nega_max(game.make_move(&mv), depth - 1, NINF, INF);
+        let score = nega_max(&game.make_move(&mv), depth.saturating_sub(1), NINF, INF);
         if max_score < score {
             max_score = score;
             best_move = mv;
@@ -146,15 +150,15 @@ fn root_nega_max(
     (best_move, max_score)
 }
 
-fn nega_max(game: Mailbox, depth: usize, mut alpha: i32, beta: i32) -> i32 {
+fn nega_max(game: &Mailbox, depth: usize, mut alpha: i32, beta: i32) -> i32 {
     let valid_moves = game.get_valid_moves();
     if depth == 0 {
-        return evaluate(game, valid_moves);
+        return evaluate(game, &valid_moves);
     }
     let mut max = NINF;
     for game_move in valid_moves {
         let new_game = game.make_move(&game_move);
-        let score = -nega_max(new_game, depth - 1, -beta.clone(), -alpha.clone());
+        let score = nega_max(&new_game, depth.saturating_sub(1), beta.neg(), alpha.neg()).neg();
         if score > max {
             max = score;
             if score > alpha {
@@ -205,7 +209,7 @@ fn is_draw(game: &Mailbox) -> bool {
     is_draw
 }
 
-fn evaluate(game: Mailbox, valid_moves: Vec<GameMove1d>) -> i32 {
+fn evaluate(game: &Mailbox, valid_moves: &[GameMove1d]) -> i32 {
     // Check if game is terminal
     if valid_moves.is_empty() {
         let check = game.get_check();
@@ -227,21 +231,27 @@ fn evaluate(game: Mailbox, valid_moves: Vec<GameMove1d>) -> i32 {
             None => return 0,
         }
     }
-    if is_draw(&game) {
+    if is_draw(game) {
         return 0;
     }
 
     // Game is not terminal, get heuristic of the game
     // Raw piece/position values
-    let endgame = is_endgame(&game);
+    let endgame = is_endgame(game);
     let mut curr_player_value: i32 = 0;
-    game.board.iter().enumerate().for_each(|(index, piece)| {
-        if piece.color == game.get_curr_player() {
-            curr_player_value += get_piece_value(piece, Position { value: index }, endgame)
-        } else {
-            curr_player_value -= get_piece_value(piece, Position { value: index }, endgame)
-        }
-    });
+    curr_player_value = curr_player_value.saturating_add(
+        game.board
+            .par_iter()
+            .enumerate()
+            .map(|(index, piece)| {
+                if piece.color == game.get_curr_player() {
+                    get_piece_value(*piece, Position { value: index }, endgame)
+                } else {
+                    get_piece_value(*piece, Position { value: index }, endgame).neg()
+                }
+            })
+            .sum(),
+    );
 
     // Castle right values
     let castles = game.get_castle_rights();
@@ -255,21 +265,42 @@ fn evaluate(game: Mailbox, valid_moves: Vec<GameMove1d>) -> i32 {
     } else {
         -1
     };
-    curr_player_value += i32::from(castles.white_king) * white_mult * 50
-        + i32::from(castles.white_queen) * white_mult * 40
-        + i32::from(castles.black_king) * black_mult * 50
-        + i32::from(castles.black_queen) * black_mult * 40;
+    curr_player_value = curr_player_value.saturating_add(
+        i32::from(castles.white_king)
+            .saturating_mul(white_mult)
+            .saturating_mul(50)
+            .saturating_add(
+                i32::from(castles.white_queen)
+                    .saturating_mul(white_mult)
+                    .saturating_mul(40),
+            )
+            .saturating_add(
+                i32::from(castles.black_king)
+                    .saturating_mul(black_mult)
+                    .saturating_mul(50),
+            )
+            .saturating_add(
+                i32::from(castles.black_queen)
+                    .saturating_mul(black_mult)
+                    .saturating_mul(40),
+            ),
+    );
 
     curr_player_value
 }
 
-fn get_piece_value(piece: &Pieces, pos: Position, endgame: bool) -> i32 {
+fn get_piece_value(piece: Pieces, pos: Position, endgame: bool) -> i32 {
     let mut value: i32 = 0;
 
     // Piece base value
-    value += piece.piece_type.value();
+    value = value.saturating_add(piece.piece_type.value());
 
-    value += piece_square_value(piece.piece_type, piece.color, pos, endgame);
+    value = value.saturating_add(piece_square_value(
+        piece.piece_type,
+        piece.color,
+        pos,
+        endgame,
+    ));
 
     value
 }
@@ -277,8 +308,8 @@ fn get_piece_value(piece: &Pieces, pos: Position, endgame: bool) -> i32 {
 fn is_endgame(game: &Mailbox) -> bool {
     let mut white_queen = false;
     let mut black_queen = false;
-    let mut white_minors = 0;
-    let mut black_minors = 0;
+    let mut white_minors: i32 = 0;
+    let mut black_minors: i32 = 0;
     game.board.iter().for_each(|piece| match piece {
         Pieces {
             piece_type: PieceTypes::Queen,
@@ -289,17 +320,13 @@ fn is_endgame(game: &Mailbox) -> bool {
             color: PieceColors::White,
         } => white_queen = true,
         Pieces {
-            piece_type: PieceTypes::Knight,
-            color: x,
-        }
-        | Pieces {
-            piece_type: PieceTypes::Bishop,
+            piece_type: PieceTypes::Knight | PieceTypes::Bishop,
             color: x,
         } => {
             if x == &PieceColors::White {
-                white_minors += 1
+                white_minors = white_minors.saturating_add(1);
             } else {
-                black_minors += 1
+                black_minors = black_minors.saturating_add(1);
             }
         }
         _ => {}

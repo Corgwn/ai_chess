@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use rayon::prelude::*;
+
 use crate::structs::attack_maps::AttackMaps;
 use crate::utils::castling::CastleRights;
 use crate::utils::checks::Checks;
-use crate::utils::chess_errors::ChessError;
 use crate::utils::gamemove1d::{to_num, CastleTypes, GameMove1d, PassantTypes};
 use crate::utils::pieces::{PieceColors, PieceTypes, Pieces};
 use crate::utils::position::Position;
@@ -148,16 +149,16 @@ impl std::fmt::Display for Mailbox {
             }
             board_string.push_str("\n-----------------\n");
         }
-        write!(f, "{}", board_string)
+        write!(f, "{board_string}")
     }
 }
 
 impl Mailbox {
-    pub fn setup_board(fen: Option<&str>) -> Result<Self, ChessError> {
+    pub fn setup_board(fen: Option<&str>) -> Result<Self, &str> {
         let mut fields = fen.unwrap_or(START_POSITION).split_ascii_whitespace();
 
         // Read board positions
-        let board_field = fields.next().unwrap();
+        let board_field = fields.next().ok_or("Invalid FEN")?;
         let board = board_field.split('/').rev();
         let mut board_state: [Pieces; 120] = [Pieces {
             piece_type: PieceTypes::Offboard,
@@ -175,47 +176,47 @@ impl Mailbox {
                                 piece_type: PieceTypes::Empty,
                                 color: PieceColors::Empty,
                             };
-                            index += 1;
+                            index = index.wrapping_add(1);
                         }
                     }
                     y => {
                         board_state[index] = Pieces::from(&y);
-                        index += 1;
+                        index = index.wrapping_add(1);
                     }
                 }
             }
-            index += 2;
+            index = index.wrapping_add(2);
         }
 
         // Read Current Move
-        let curr_player = match fields.next().unwrap() {
+        let curr_player = match fields.next().ok_or("Invalid FEN")? {
             "b" => PieceColors::Black,
             "w" => PieceColors::White,
-            _ => return Err(ChessError::FENParseError),
+            _ => return Err("Could not parse FEN string"),
         };
 
         // Read Castling Rights
-        let temp = fields.next().unwrap();
+        let temp = fields.next().ok_or("Invalid FEN")?;
         let castling_rights = CastleRights {
-            white_king: temp.contains("K"),
-            white_queen: temp.contains("Q"),
-            black_king: temp.contains("k"),
-            black_queen: temp.contains("q"),
+            white_king: temp.contains('K'),
+            white_queen: temp.contains('Q'),
+            black_king: temp.contains('k'),
+            black_queen: temp.contains('q'),
         };
 
         // Read En Passant Targets
-        let temp = fields.next().unwrap();
-        let en_passant: Option<Position> = if !temp.eq("-") {
+        let temp = fields.next().ok_or("Invalid FEN")?;
+        let en_passant: Option<Position> = if temp.eq("-") {
+            None
+        } else {
             Some(Position {
                 value: to_num(temp),
             })
-        } else {
-            None
         };
 
         // Read Move Numbers
-        let half_moves = fields.next().unwrap().parse::<u8>().unwrap();
-        let full_moves = fields.next().unwrap().parse::<u8>().unwrap();
+        let half_moves = fields.next().ok_or("Invalid FEN")?.parse::<u8>().unwrap();
+        let full_moves = fields.next().ok_or("Invalid FEN")?.parse::<u8>().unwrap();
 
         // Find King Positions
         let mut black_king = Position { value: 95 };
@@ -230,7 +231,7 @@ impl Mailbox {
                     piece_type: PieceTypes::King,
                     color: PieceColors::White,
                 } => white_king = Position { value: index },
-                _ => continue,
+                _ => {}
             }
         }
 
@@ -255,56 +256,61 @@ impl Mailbox {
         })
     }
 
+    #[must_use]
     pub fn get_valid_moves(&self) -> Vec<GameMove1d> {
-        let mut moves = vec![];
-        for (i, piece) in self.board.iter().enumerate() {
-            let pos = Position { value: i };
-            match piece {
+        self.board
+            .par_iter()
+            .enumerate()
+            .flat_map(|(i, piece)| match piece {
                 Pieces {
                     piece_type: PieceTypes::Empty,
                     ..
-                } => continue,
-                Pieces {
+                }
+                | Pieces {
                     piece_type: PieceTypes::Offboard,
                     ..
-                } => continue,
-                Pieces { color: x, .. } if x != &self.curr_player => continue,
+                } => {
+                    vec![]
+                }
+                Pieces { color: x, .. } if x != &self.curr_player => {
+                    vec![]
+                }
                 Pieces {
                     piece_type: PieceTypes::Knight,
                     ..
-                } => moves.extend(self.generate_moves(pos, &KNIGHT_OFFSETS, false)),
+                } => self.generate_moves(Position { value: i }, &KNIGHT_OFFSETS, false),
                 Pieces {
                     piece_type: PieceTypes::Rook,
                     ..
-                } => moves.extend(self.generate_moves(pos, &ROOK_OFFSETS, true)),
+                } => self.generate_moves(Position { value: i }, &ROOK_OFFSETS, true),
                 Pieces {
                     piece_type: PieceTypes::Bishop,
                     ..
-                } => moves.extend(self.generate_moves(pos, &BISHOP_OFFSETS, true)),
+                } => self.generate_moves(Position { value: i }, &BISHOP_OFFSETS, true),
                 Pieces {
                     piece_type: PieceTypes::Queen,
                     ..
-                } => moves.extend(self.generate_moves(pos, &QUEEN_OFFSETS, true)),
+                } => self.generate_moves(Position { value: i }, &QUEEN_OFFSETS, true),
                 Pieces {
                     piece_type: PieceTypes::King,
                     ..
-                } => moves.extend(self.generate_king_moves(pos)),
+                } => self.generate_king_moves(Position { value: i }),
                 Pieces {
                     piece_type: PieceTypes::Pawn,
                     ..
-                } => moves.extend(self.generate_pawn_moves(pos)),
-            };
-        }
-        moves
+                } => self.generate_pawn_moves(Position { value: i }),
+            })
+            .collect()
     }
 
+    #[must_use]
     pub fn make_move(&self, mov: &GameMove1d) -> Self {
         let mut new_mailbox = self.clone();
         let mut irreversible = false;
         let piece = new_mailbox.board[mov.start.value];
         new_mailbox.board[mov.start.value] = EMPTY_PIECE;
         new_mailbox.board[mov.end.value] = piece;
-        new_mailbox.curr_player = -new_mailbox.curr_player;
+        new_mailbox.curr_player = !new_mailbox.curr_player;
 
         // Check if it was a castle, and move rook accordingly
         if let Some(castle_type) = mov.castle {
@@ -331,7 +337,7 @@ impl Mailbox {
                     new_mailbox.board[95] = temp;
                 }
             }
-        };
+        }
 
         // Reset passant move if previous state had one
         new_mailbox.en_passant = None;
@@ -343,13 +349,13 @@ impl Mailbox {
                 PassantTypes::PassantCapture(pos) => new_mailbox.board[pos.value] = EMPTY_PIECE,
                 PassantTypes::PassantAvailable(pos) => new_mailbox.en_passant = Some(pos),
             }
-        };
+        }
 
         // Check if promotion and change accordingly
         if let Some(promotion) = mov.promote {
             irreversible = true;
             new_mailbox.board[mov.end.value] = promotion;
-        };
+        }
 
         // Update King position if king moved
         match piece {
@@ -419,11 +425,11 @@ impl Mailbox {
         if irreversible || piece.piece_type == PieceTypes::Pawn {
             new_mailbox.half_moves = 0;
         } else {
-            new_mailbox.half_moves += 1;
+            new_mailbox.half_moves = new_mailbox.half_moves.wrapping_add(1);
         }
         // Update full moves
         if new_mailbox.curr_player == PieceColors::White {
-            new_mailbox.full_moves += 1
+            new_mailbox.full_moves = new_mailbox.full_moves.wrapping_add(1);
         }
 
         // Generate Attack Maps
@@ -459,93 +465,92 @@ impl Mailbox {
     }
 
     fn generate_moves(&self, pos: Position, offsets: &[i8], ray: bool) -> Vec<GameMove1d> {
-        let mut moves = vec![];
+        offsets
+            .iter()
+            .flat_map(|offset| {
+                let mut moves = vec![];
+                let mut test_pos = pos;
+                loop {
+                    test_pos.value = test_pos.value.saturating_add_signed(*offset as isize);
 
-        for offset in offsets {
-            let mut test_pos = pos;
-            loop {
-                test_pos.value = test_pos
+                    // Check destination of move and handle accordingly
+                    let capture: bool = match self.board[test_pos.value] {
+                        Pieces {
+                            piece_type: PieceTypes::Offboard,
+                            ..
+                        } => break,
+                        Pieces {
+                            piece_type: PieceTypes::Empty,
+                            ..
+                        } => false,
+                        Pieces { color: x, .. } if x == self.curr_player => break,
+                        _ => true,
+                    };
+
+                    // Check if move puts own king in check
+                    if !self.is_curr_player_checked(pos, test_pos) {
+                        // Move is good to add to move list
+                        moves.push(GameMove1d {
+                            start: pos,
+                            end: test_pos,
+                            capture,
+                            ..Default::default()
+                        });
+                    }
+
+                    // Only loop if piece can slide and if move was not capture
+                    if !ray || capture {
+                        break;
+                    }
+                }
+                moves
+            })
+            .collect()
+    }
+
+    fn generate_king_moves(&self, start: Position) -> Vec<GameMove1d> {
+        // Generate standard moves
+        let mut moves = QUEEN_OFFSETS
+            .par_iter()
+            .filter_map(|offset| {
+                let mut test_end = start;
+                test_end.value = test_end
                     .value
                     .checked_add_signed(*offset as isize)
                     .expect("Invalid position detected {test_pos}");
 
+                if !Mailbox::is_legal_square(self.board, test_end) {
+                    return None;
+                }
+
                 // Check destination of move and handle accordingly
-                let capture: bool = match self.board[test_pos.value] {
+                let capture: bool = match self.board[test_end.value] {
                     Pieces {
                         piece_type: PieceTypes::Offboard,
                         ..
-                    } => break,
+                    } => return None,
                     Pieces {
                         piece_type: PieceTypes::Empty,
                         ..
                     } => false,
-                    Pieces { color: x, .. } if x == self.curr_player => break,
+                    Pieces { color: x, .. } if x == self.curr_player => return None,
                     _ => true,
                 };
 
-                // Check if move puts own king in check
-                if !self.is_curr_player_checked(&pos, &test_pos) {
-                    // Move is good to add to move list
-                    moves.push(GameMove1d {
-                        start: pos,
-                        end: test_pos,
-                        capture,
-                        ..Default::default()
-                    });
+                // Check if move puts king in check
+                if self.is_curr_player_checked(start, test_end) {
+                    return None;
                 }
 
-                // Only loop if piece can slide and if move was not capture
-                if !ray || capture {
-                    break;
-                }
-            }
-        }
-
-        moves
-    }
-
-    fn generate_king_moves(&self, start: Position) -> Vec<GameMove1d> {
-        let mut moves = vec![];
-
-        // Generate standard moves
-        for offset in QUEEN_OFFSETS {
-            let mut test_end = start;
-            test_end.value = test_end
-                .value
-                .checked_add_signed(offset as isize)
-                .expect("Invalid position detected {test_pos}");
-
-            if !Mailbox::is_legal_square(self.board, test_end) {
-                continue;
-            }
-
-            // Check destination of move and handle accordingly
-            let capture: bool = match self.board[test_end.value] {
-                Pieces {
-                    piece_type: PieceTypes::Offboard,
-                    ..
-                } => continue,
-                Pieces {
-                    piece_type: PieceTypes::Empty,
-                    ..
-                } => false,
-                Pieces { color: x, .. } if x == self.curr_player => continue,
-                _ => true,
-            };
-
-            // Check if move puts king in check
-            if self.is_curr_player_checked(&start, &test_end) {
-                continue;
-            }
-
-            // Move is good to add to move list
-            moves.push(GameMove1d {
-                start,
-                end: test_end,
-                capture,
-                ..Default::default()
-            });
-        }
+                // Move is good to add to move list
+                Some(GameMove1d {
+                    start,
+                    end: test_end,
+                    capture,
+                    ..Default::default()
+                })
+            })
+            .collect();
 
         // If someone is in check, either game is over or you can't castle
         // so king moves limited to standard moves
@@ -561,29 +566,29 @@ impl Mailbox {
                     && self.board[22..=24]
                         .iter()
                         .all(|&i| i.piece_type == PieceTypes::Empty)
-                    && !self.is_curr_player_checked(&start, &Position { value: 23 })
-                    && !self.is_curr_player_checked(&start, &Position { value: 24 })
+                    && !self.is_curr_player_checked(start, Position { value: 23 })
+                    && !self.is_curr_player_checked(start, Position { value: 24 })
                 {
                     moves.push(GameMove1d {
                         start,
                         end: Position { value: 23 },
                         castle: Some(CastleTypes::WhiteQueen),
                         ..Default::default()
-                    })
+                    });
                 } else if self.castling_rights.white_king
                     // && self.attack_maps.black[26..=27].iter().all(|&x| x == 0)
                     && self.board[26..=27]
                         .iter()
                         .all(|&i| i.piece_type == PieceTypes::Empty)
-                    && !self.is_curr_player_checked(&start, &Position { value: 26 })
-                    && !self.is_curr_player_checked(&start, &Position { value: 27 })
+                    && !self.is_curr_player_checked(start, Position { value: 26 })
+                    && !self.is_curr_player_checked(start, Position { value: 27 })
                 {
                     moves.push(GameMove1d {
                         start,
                         end: Position { value: 27 },
                         castle: Some(CastleTypes::WhiteKing),
                         ..Default::default()
-                    })
+                    });
                 }
             }
             PieceColors::Black => {
@@ -592,32 +597,32 @@ impl Mailbox {
                     && self.board[92..=94]
                         .iter()
                         .all(|&i| i.piece_type == PieceTypes::Empty)
-                    && !self.is_curr_player_checked(&start, &Position { value: 93 })
-                    && !self.is_curr_player_checked(&start, &Position { value: 94 })
+                    && !self.is_curr_player_checked(start, Position { value: 93 })
+                    && !self.is_curr_player_checked(start, Position { value: 94 })
                 {
                     moves.push(GameMove1d {
                         start,
                         end: Position { value: 93 },
                         castle: Some(CastleTypes::BlackQueen),
                         ..Default::default()
-                    })
+                    });
                 } else if self.castling_rights.black_king
                     // && self.attack_maps.white[96..=97].iter().all(|&x| x == 0)
                     && self.board[96..=97]
                         .iter()
                         .all(|&i| i.piece_type == PieceTypes::Empty)
-                    && !self.is_curr_player_checked(&start, &Position { value: 96 })
-                    && !self.is_curr_player_checked(&start, &Position { value: 97 })
+                    && !self.is_curr_player_checked(start, Position { value: 96 })
+                    && !self.is_curr_player_checked(start, Position { value: 97 })
                 {
                     moves.push(GameMove1d {
                         start,
                         end: Position { value: 97 },
                         castle: Some(CastleTypes::BlackKing),
                         ..Default::default()
-                    })
+                    });
                 }
             }
-            _ => {}
+            PieceColors::Empty => {}
         }
 
         moves
@@ -639,7 +644,7 @@ impl Mailbox {
         } else {
             double_forward = DD;
             forward = D;
-        };
+        }
         let capture_left = forward - 1;
         let capture_right = forward + 1;
         // println!(
@@ -660,7 +665,7 @@ impl Mailbox {
         };
 
         if self.board[test_end.value].piece_type == PieceTypes::Empty
-            && !self.is_curr_player_checked(&start, &test_end)
+            && !self.is_curr_player_checked(start, test_end)
         {
             if can_promote(test_end, self.curr_player) {
                 for piece_type in PROMOTABLE_PIECES {
@@ -704,7 +709,7 @@ impl Mailbox {
         if can_double_move
             && self.board[test_half.value].piece_type == PieceTypes::Empty
             && self.board[test_end.value].piece_type == PieceTypes::Empty
-            && !self.is_curr_player_checked(&start, &test_end)
+            && !self.is_curr_player_checked(start, test_end)
         {
             moves.push(GameMove1d {
                 start,
@@ -725,7 +730,7 @@ impl Mailbox {
 
             // Check for en passant captures
             if let Some(pos) = self.en_passant {
-                if test_end == pos && !self.is_curr_player_checked(&start, &test_end) {
+                if test_end == pos && !self.is_curr_player_checked(start, test_end) {
                     moves.push(GameMove1d {
                         start,
                         end: test_end,
@@ -737,14 +742,14 @@ impl Mailbox {
                         })),
                         capture: true,
                         ..Default::default()
-                    })
+                    });
                 }
             }
 
             // Check for standard captures
-            let capture_color = -self.curr_player;
+            let capture_color = !self.curr_player;
             if self.board[test_end.value].color == capture_color
-                && !self.is_curr_player_checked(&start, &test_end)
+                && !self.is_curr_player_checked(start, test_end)
             {
                 if can_promote(test_end, self.curr_player) {
                     for piece_type in PROMOTABLE_PIECES {
@@ -773,7 +778,7 @@ impl Mailbox {
     }
 
     //
-    fn is_curr_player_checked(&self, start: &Position, end: &Position) -> bool {
+    fn is_curr_player_checked(&self, start: Position, end: Position) -> bool {
         let white_king: Position;
         let black_king: Position;
         match self.board[start.value] {
@@ -781,7 +786,7 @@ impl Mailbox {
                 piece_type: PieceTypes::King,
                 color: PieceColors::White,
             } => {
-                white_king = *end;
+                white_king = end;
                 black_king = self.black_king;
             }
             Pieces {
@@ -789,7 +794,7 @@ impl Mailbox {
                 color: PieceColors::Black,
             } => {
                 white_king = self.white_king;
-                black_king = *end;
+                black_king = end;
             }
             _ => {
                 white_king = self.white_king;
@@ -811,16 +816,18 @@ impl Mailbox {
         let mut white_attack_map = [0u8; 120];
         let mut black_attack_map = [0u8; 120];
 
-        for (index, piece) in board.iter().enumerate() {
-            match piece {
+        board
+            .iter()
+            .enumerate()
+            .for_each(|(index, piece)| match piece {
                 Pieces {
                     piece_type: PieceTypes::Offboard,
                     ..
-                } => continue,
-                Pieces {
+                }
+                | Pieces {
                     piece_type: PieceTypes::Empty,
                     ..
-                } => continue,
+                } => {}
                 Pieces {
                     piece_type: PieceTypes::Knight,
                     color,
@@ -886,14 +893,14 @@ impl Mailbox {
                     color,
                 } => match color {
                     PieceColors::White => {
-                        white_attack_map[index.checked_add_signed(UR as isize).unwrap()] += 1;
-                        white_attack_map[index.checked_add_signed(UL as isize).unwrap()] += 1;
+                        white_attack_map[index.checked_add_signed(isize::from(UR)).unwrap()] += 1;
+                        white_attack_map[index.checked_add_signed(isize::from(UL)).unwrap()] += 1;
                     }
                     PieceColors::Black => {
-                        black_attack_map[index.checked_add_signed(DR as isize).unwrap()] += 1;
-                        black_attack_map[index.checked_add_signed(DL as isize).unwrap()] += 1;
+                        black_attack_map[index.checked_add_signed(isize::from(DR)).unwrap()] += 1;
+                        black_attack_map[index.checked_add_signed(isize::from(DL)).unwrap()] += 1;
                     }
-                    _ => {}
+                    PieceColors::Empty => {}
                 },
                 Pieces {
                     piece_type: PieceTypes::King,
@@ -901,7 +908,7 @@ impl Mailbox {
                 } => {
                     for offset in QUEEN_OFFSETS {
                         let test_pos = Position {
-                            value: index.checked_add_signed(offset as isize).unwrap(),
+                            value: index.checked_add_signed(isize::from(offset)).unwrap(),
                         };
                         if !Mailbox::is_legal_square(board, test_pos) {
                             continue;
@@ -921,7 +928,10 @@ impl Mailbox {
                         let mut test_pos = Position { value: index };
                         loop {
                             test_pos = Position {
-                                value: test_pos.value.checked_add_signed(offset as isize).unwrap(),
+                                value: test_pos
+                                    .value
+                                    .checked_add_signed(isize::from(offset))
+                                    .unwrap(),
                             };
                             if !Mailbox::is_legal_square(board, test_pos) {
                                 break;
@@ -934,8 +944,7 @@ impl Mailbox {
                         }
                     }
                 }
-            }
-        }
+            });
 
         AttackMaps {
             black: black_attack_map,
@@ -944,7 +953,7 @@ impl Mailbox {
     }
 
     pub fn get_prev(&self) -> Option<Arc<Mailbox>> {
-        self.previous_state.as_ref().cloned()
+        self.previous_state.clone()
     }
 
     pub fn get_attack_maps(&self) -> AttackMaps {
@@ -976,13 +985,14 @@ fn verify_checks(
     }
     None
 }
+
 fn is_white_checked(board: [Pieces; 120], white_king: Position) -> bool {
     // Check kings
     for offset in QUEEN_OFFSETS {
         let test_pos = Position {
             value: white_king
                 .value
-                .checked_add_signed(offset as isize)
+                .checked_add_signed(isize::from(offset))
                 .expect("Invalid position found"),
         };
         if let Pieces {
@@ -999,7 +1009,7 @@ fn is_white_checked(board: [Pieces; 120], white_king: Position) -> bool {
         let test_pos = Position {
             value: white_king
                 .value
-                .checked_add_signed(offset as isize)
+                .checked_add_signed(isize::from(offset))
                 .expect("Invalid position found"),
         };
         if let Pieces {
@@ -1018,16 +1028,12 @@ fn is_white_checked(board: [Pieces; 120], white_king: Position) -> bool {
             test_pos = Position {
                 value: test_pos
                     .value
-                    .checked_add_signed(offset as isize)
+                    .checked_add_signed(isize::from(offset))
                     .expect("Invalid position found"),
             };
             match board[test_pos.value] {
                 Pieces {
-                    piece_type: PieceTypes::Bishop,
-                    color: PieceColors::Black,
-                }
-                | Pieces {
-                    piece_type: PieceTypes::Queen,
+                    piece_type: PieceTypes::Bishop | PieceTypes::Queen,
                     color: PieceColors::Black,
                 } => {
                     return true;
@@ -1035,9 +1041,7 @@ fn is_white_checked(board: [Pieces; 120], white_king: Position) -> bool {
                 Pieces {
                     piece_type: PieceTypes::Empty,
                     ..
-                } => {
-                    continue;
-                }
+                } => {}
                 _ => {
                     break;
                 }
@@ -1052,16 +1056,12 @@ fn is_white_checked(board: [Pieces; 120], white_king: Position) -> bool {
             test_pos = Position {
                 value: test_pos
                     .value
-                    .checked_add_signed(offset as isize)
+                    .checked_add_signed(isize::from(offset))
                     .expect("Invalid position found"),
             };
             match board[test_pos.value] {
                 Pieces {
-                    piece_type: PieceTypes::Rook,
-                    color: PieceColors::Black,
-                }
-                | Pieces {
-                    piece_type: PieceTypes::Queen,
+                    piece_type: PieceTypes::Rook | PieceTypes::Queen,
                     color: PieceColors::Black,
                 } => {
                     return true;
@@ -1069,9 +1069,7 @@ fn is_white_checked(board: [Pieces; 120], white_king: Position) -> bool {
                 Pieces {
                     piece_type: PieceTypes::Empty,
                     ..
-                } => {
-                    continue;
-                }
+                } => {}
                 _ => {
                     break;
                 }
@@ -1084,7 +1082,7 @@ fn is_white_checked(board: [Pieces; 120], white_king: Position) -> bool {
         let test_pos = Position {
             value: white_king
                 .value
-                .checked_add_signed(offset as isize)
+                .checked_add_signed(isize::from(offset))
                 .expect("Invalid position found"),
         };
         if let Pieces {
@@ -1105,7 +1103,7 @@ fn is_black_checked(board: [Pieces; 120], black_king: Position) -> bool {
         let test_pos = Position {
             value: black_king
                 .value
-                .checked_add_signed(offset as isize)
+                .checked_add_signed(isize::from(offset))
                 .expect("Invalid position found"),
         };
         if let Pieces {
@@ -1122,7 +1120,7 @@ fn is_black_checked(board: [Pieces; 120], black_king: Position) -> bool {
         let test_pos = Position {
             value: black_king
                 .value
-                .checked_add_signed(offset as isize)
+                .checked_add_signed(isize::from(offset))
                 .expect("Invalid position found"),
         };
         if let Pieces {
@@ -1141,16 +1139,12 @@ fn is_black_checked(board: [Pieces; 120], black_king: Position) -> bool {
             test_pos = Position {
                 value: test_pos
                     .value
-                    .checked_add_signed(offset as isize)
+                    .checked_add_signed(isize::from(offset))
                     .expect("Invalid position found"),
             };
             match board[test_pos.value] {
                 Pieces {
-                    piece_type: PieceTypes::Bishop,
-                    color: PieceColors::White,
-                }
-                | Pieces {
-                    piece_type: PieceTypes::Queen,
+                    piece_type: PieceTypes::Bishop | PieceTypes::Queen,
                     color: PieceColors::White,
                 } => {
                     return true;
@@ -1158,9 +1152,7 @@ fn is_black_checked(board: [Pieces; 120], black_king: Position) -> bool {
                 Pieces {
                     piece_type: PieceTypes::Empty,
                     ..
-                } => {
-                    continue;
-                }
+                } => {}
                 _ => {
                     break;
                 }
@@ -1175,16 +1167,12 @@ fn is_black_checked(board: [Pieces; 120], black_king: Position) -> bool {
             test_pos = Position {
                 value: test_pos
                     .value
-                    .checked_add_signed(offset as isize)
+                    .checked_add_signed(isize::from(offset))
                     .expect("Invalid position found"),
             };
             match board[test_pos.value] {
                 Pieces {
-                    piece_type: PieceTypes::Rook,
-                    color: PieceColors::White,
-                }
-                | Pieces {
-                    piece_type: PieceTypes::Queen,
+                    piece_type: PieceTypes::Rook | PieceTypes::Queen,
                     color: PieceColors::White,
                 } => {
                     return true;
@@ -1192,9 +1180,7 @@ fn is_black_checked(board: [Pieces; 120], black_king: Position) -> bool {
                 Pieces {
                     piece_type: PieceTypes::Empty,
                     ..
-                } => {
-                    continue;
-                }
+                } => {}
                 _ => {
                     break;
                 }
@@ -1207,7 +1193,7 @@ fn is_black_checked(board: [Pieces; 120], black_king: Position) -> bool {
         let test_pos = Position {
             value: black_king
                 .value
-                .checked_add_signed(offset as isize)
+                .checked_add_signed(isize::from(offset))
                 .expect("Invalid position found"),
         };
         if let Pieces {

@@ -204,7 +204,11 @@ mod value_tables {
     ];
 }
 
-use value_tables::*;
+use value_tables::{
+    BLACK_BISHOP_TABLE, BLACK_KING_EG_TABLE, BLACK_KING_MG_TABLE, BLACK_KNIGHT_TABLE,
+    BLACK_PAWN_TABLE, BLACK_QUEEN_TABLE, BLACK_ROOK_TABLE, WHITE_BISHOP_TABLE, WHITE_KING_EG_TABLE,
+    WHITE_KING_MG_TABLE, WHITE_KNIGHT_TABLE, WHITE_PAWN_TABLE, WHITE_QUEEN_TABLE, WHITE_ROOK_TABLE,
+};
 
 pub(crate) fn piece_square_value(
     piece_type: PieceTypes,

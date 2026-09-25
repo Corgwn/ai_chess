@@ -101,12 +101,12 @@ fn uci_engine() {
                 let (tx, rx) = mpsc::channel();
                 let handle = thread::spawn(move || {
                     MailboxNegamax::uci_find_move(
-                        game,
+                        &game,
                         time_to_move,
-                        searchmoves,
+                        &searchmoves,
                         max_plies,
                         max_nodes,
-                        rx,
+                        &rx,
                     );
                 });
                 engine_handle = Some(Engine {
@@ -126,7 +126,7 @@ fn uci_engine() {
                 let game = board.clone();
                 let (tx, rx) = mpsc::channel();
                 let handle = thread::spawn(move || {
-                    MailboxNegamax::uci_infinite_find_move(game, rx, searchmoves);
+                    MailboxNegamax::uci_infinite_find_move(&game, &rx, &searchmoves);
                 });
                 engine_handle = Some(Engine {
                     handle,
@@ -181,12 +181,12 @@ fn uci_engine() {
                 let (tx, rx) = mpsc::channel();
                 let handle = thread::spawn(move || {
                     MailboxNegamax::uci_find_move(
-                        game,
+                        &game,
                         time_to_move,
-                        searchmoves,
+                        &searchmoves,
                         max_plies,
                         max_nodes,
-                        rx,
+                        &rx,
                     );
                 });
                 engine_handle = Some(Engine {
@@ -234,8 +234,7 @@ fn run_sample_game() {
             "Starting search for player {}, searching for {}ms",
             turn, search_time
         );
-        let next_move =
-            MailboxNegamax::uci_find_move(game.clone(), search_time, None, None, None, rx);
+        let next_move = MailboxNegamax::uci_find_move(&game, search_time, &None, None, None, &rx);
         let turn_duration = turn_start.elapsed().as_millis();
 
         match turn {

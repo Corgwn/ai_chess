@@ -34,6 +34,7 @@
         "site": "?",
         "file": "",
         "notation": 0,
+        "append_file": true,
         "track_nodes": false,
         "track_seldepth": false,
         "track_nps": false,
@@ -46,7 +47,8 @@
         "crc": false
     },
     "epd": {
-        "file": ""
+        "file": "",
+        "append_file": true
     },
     "sprt": {
         "alpha": 0.0,
@@ -58,7 +60,7 @@
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 8116733048748605060,
+    "seed": 10629659042723209747,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
@@ -68,17 +70,19 @@
     "autosaveinterval": 20,
     "games": 2,
     "rounds": 10,
-    "concurrency": 4,
+    "concurrency": 1,
     "force_concurrency": false,
     "recover": false,
     "noswap": false,
     "reverse": false,
     "report_penta": true,
     "affinity": false,
+    "check_mate_pvs": false,
     "show_latency": false,
     "log": {
         "file": "",
-        "level": 2,
+        "level": 3,
+        "append_file": true,
         "compress": false,
         "realtime": true,
         "engine_coms": false
@@ -105,9 +109,9 @@
             "variant": 0
         },
         {
-            "name": "Stockfish",
+            "name": "Engine2",
             "dir": "",
-            "cmd": "stockfish",
+            "cmd": "target/release/ai_chess",
             "args": "",
             "restart": false,
             "options": [],
@@ -126,27 +130,16 @@
         }
     ],
     "stats": {
-        "Stockfish vs Engine1": {
-            "wins": 12,
-            "losses": 0,
-            "draws": 0,
-            "penta_WW": 6,
-            "penta_WD": 0,
-            "penta_WL": 0,
-            "penta_DD": 0,
-            "penta_LD": 0,
-            "penta_LL": 0
-        },
-        "Engine1 vs Stockfish": {
+        "Engine1 vs Engine2": {
             "wins": 0,
-            "losses": 8,
-            "draws": 0,
+            "losses": 0,
+            "draws": 20,
             "penta_WW": 0,
             "penta_WD": 0,
             "penta_WL": 0,
-            "penta_DD": 0,
+            "penta_DD": 10,
             "penta_LD": 0,
-            "penta_LL": 4
+            "penta_LL": 0
         }
     }
 }

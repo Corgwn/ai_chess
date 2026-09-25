@@ -1,10 +1,7 @@
 use std::{
     fmt::{self, Display},
-    ops::Neg,
+    ops::Not,
 };
-
-pub(crate) const WHITE: bool = false;
-pub(crate) const BLACK: bool = true;
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub enum PieceTypes {
@@ -21,14 +18,13 @@ pub enum PieceTypes {
 impl PieceTypes {
     pub(crate) const fn value(self) -> i32 {
         match self {
-            PieceTypes::Knight => 320,
-            PieceTypes::Rook => 500,
-            PieceTypes::Bishop => 330,
-            PieceTypes::Queen => 900,
-            PieceTypes::King => 20000,
-            PieceTypes::Pawn => 100,
-            PieceTypes::Empty => 0,
-            PieceTypes::Offboard => 0,
+            Self::Knight => 320,
+            Self::Rook => 500,
+            Self::Bishop => 330,
+            Self::Queen => 900,
+            Self::King => 20000,
+            Self::Pawn => 100,
+            Self::Empty | Self::Offboard => 0,
         }
     }
 }
@@ -40,14 +36,14 @@ pub enum PieceColors {
     Empty,
 }
 
-impl Neg for PieceColors {
+impl Not for PieceColors {
     type Output = Self;
 
-    fn neg(self) -> Self::Output {
+    fn not(self) -> Self::Output {
         match self {
-            PieceColors::Black => PieceColors::White,
-            PieceColors::White => PieceColors::Black,
-            PieceColors::Empty => PieceColors::Empty,
+            Self::Black => Self::White,
+            Self::White => Self::Black,
+            Self::Empty => Self::Empty,
         }
     }
 }
@@ -55,9 +51,9 @@ impl Neg for PieceColors {
 impl Display for PieceColors {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            PieceColors::Black => write!(f, "Black"),
-            PieceColors::White => write!(f, "White"),
-            PieceColors::Empty => write!(f, ""),
+            Self::Black => write!(f, "Black"),
+            Self::White => write!(f, "White"),
+            Self::Empty => write!(f, ""),
         }
     }
 }
@@ -69,67 +65,68 @@ pub struct Pieces {
 }
 
 impl Pieces {
-    pub fn from(piece: &char) -> Pieces {
+    #[must_use]
+    pub const fn from(piece: &char) -> Self {
         match piece {
-            'r' => Pieces {
+            'r' => Self {
                 piece_type: PieceTypes::Rook,
                 color: PieceColors::Black,
             },
-            'n' => Pieces {
+            'n' => Self {
                 piece_type: PieceTypes::Knight,
                 color: PieceColors::Black,
             },
-            'b' => Pieces {
+            'b' => Self {
                 piece_type: PieceTypes::Bishop,
                 color: PieceColors::Black,
             },
-            'q' => Pieces {
+            'q' => Self {
                 piece_type: PieceTypes::Queen,
                 color: PieceColors::Black,
             },
-            'k' => Pieces {
+            'k' => Self {
                 piece_type: PieceTypes::King,
                 color: PieceColors::Black,
             },
-            'p' => Pieces {
+            'p' => Self {
                 piece_type: PieceTypes::Pawn,
                 color: PieceColors::Black,
             },
-            'R' => Pieces {
+            'R' => Self {
                 piece_type: PieceTypes::Rook,
                 color: PieceColors::White,
             },
-            'N' => Pieces {
+            'N' => Self {
                 piece_type: PieceTypes::Knight,
                 color: PieceColors::White,
             },
-            'B' => Pieces {
+            'B' => Self {
                 piece_type: PieceTypes::Bishop,
                 color: PieceColors::White,
             },
-            'Q' => Pieces {
+            'Q' => Self {
                 piece_type: PieceTypes::Queen,
                 color: PieceColors::White,
             },
-            'K' => Pieces {
+            'K' => Self {
                 piece_type: PieceTypes::King,
                 color: PieceColors::White,
             },
-            'P' => Pieces {
+            'P' => Self {
                 piece_type: PieceTypes::Pawn,
                 color: PieceColors::White,
             },
-            _ => Pieces {
+            _ => Self {
                 piece_type: PieceTypes::Empty,
                 color: PieceColors::Empty,
             },
         }
     }
+
     pub fn get_color(&self) -> bool {
         match self.color {
             PieceColors::Black => true,
-            PieceColors::White => false,
-            PieceColors::Empty => false,
+            PieceColors::White | PieceColors::Empty => false,
         }
     }
 }
@@ -181,20 +178,20 @@ impl fmt::Display for Pieces {
                 piece_type: PieceTypes::King,
                 color: PieceColors::White,
             } => "K",
-            Pieces {
+            Self {
                 piece_type: PieceTypes::Pawn,
                 color: PieceColors::White,
             } => "P",
-            Pieces {
+            Self {
                 piece_type: PieceTypes::Offboard,
                 ..
             } => "O",
-            Pieces {
+            Self {
                 piece_type: PieceTypes::Empty,
                 ..
             } => " ",
             _ => "",
         };
-        write!(f, "{}", piece)
+        write!(f, "{piece}")
     }
 }

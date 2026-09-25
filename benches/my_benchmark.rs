@@ -1,16 +1,12 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use rusty_chess::board::mailbox::Mailbox;
 
-fn fibonacci(n: u64) -> u64 {
-    match n {
-        0 => 1,
-        1 => 1,
-        n => fibonacci(n - 1) + fibonacci(n - 2),
-    }
+fn benchmark_start_pos_move_gen(c: &mut Criterion) {
+    let start_pos = Mailbox::setup_board(None).unwrap();
+    c.bench_function("start pos move gen", |b| {
+        b.iter(|| start_pos.get_valid_moves())
+    });
 }
 
-fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("fib 20", |b| b.iter(|| fibonacci(black_box(20))));
-}
-
-criterion_group!(benches, criterion_benchmark);
-criterion_main!(benches);
+criterion_group!(board_tests, benchmark_start_pos_move_gen);
+criterion_main!(board_tests);

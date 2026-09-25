@@ -57,6 +57,10 @@
           pkgs.fastchess
           pkgs.stockfish
           perftree
+          pkgs.bacon
+          pkgs.cargo-nextest
+          pkgs.cargo-seek
+          pkgs.cargo-generate
         ];
 
         nativeBuildInputs = [
