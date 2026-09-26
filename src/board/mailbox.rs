@@ -259,7 +259,7 @@ impl Mailbox {
     #[must_use]
     pub fn get_valid_moves(&self) -> Vec<GameMove1d> {
         self.board
-            .par_iter()
+            .iter()
             .enumerate()
             .flat_map(|(i, piece)| match piece {
                 Pieces {
@@ -511,7 +511,7 @@ impl Mailbox {
     fn generate_king_moves(&self, start: Position) -> Vec<GameMove1d> {
         // Generate standard moves
         let mut moves = QUEEN_OFFSETS
-            .par_iter()
+            .iter()
             .filter_map(|offset| {
                 let mut test_end = start;
                 test_end.value = test_end

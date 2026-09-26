@@ -1,9 +1,8 @@
 #![allow(dead_code)]
-use std::ops::{AddAssign, Neg};
+use std::ops::Neg;
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
-use rand::distr::weighted::Weight;
 use rayon::prelude::*;
 
 use crate::board::mailbox::Mailbox;
@@ -117,10 +116,10 @@ impl MailboxNegamax {
     }
 
     pub fn uci_search_mate(
-        game: &Mailbox,
-        search_time: u128,
-        available_moves: &Option<Vec<GameMove1d>>,
-        mate_moves: usize,
+        _game: &Mailbox,
+        _search_time: u128,
+        _available_moves: &Option<Vec<GameMove1d>>,
+        _mate_moves: usize,
     ) -> GameMove1d {
         // TODO: set up search thread, and listen for both stop command and search information
         // If stop command is issued, immediately stop search and return most recent best move

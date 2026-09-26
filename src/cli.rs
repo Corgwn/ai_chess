@@ -265,18 +265,22 @@ fn run_sample_game() {
 }
 fn run_manual_game() {
     let mut game = Mailbox::setup_board(None).unwrap();
+    let mut moves = game.get_valid_moves();
 
     let mut turn_num: usize = 0;
     println!("Game starting!");
     println!("{}", game);
-    while !game.get_valid_moves().is_empty() {
+
+    while !moves.is_empty() {
         let turn = game.get_curr_player();
 
         println!("Starting search for player {}", turn);
+        println!("Valid Moves: {:?}", moves);
         let next_move = manual::Manual::find_move_1d();
 
         turn_num += 1;
         game = game.make_move(&next_move);
+        moves = game.get_valid_moves();
         println!("\nTurn number: {turn_num} | Player: {turn} | Move: {next_move}\n",);
         println!("{}", game);
     }
